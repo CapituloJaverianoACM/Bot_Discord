@@ -6,6 +6,7 @@ export interface GuildConfig {
   roles: {
     admin?: string;
     junta?: string;
+    verify?: string;
   };
   channels: {
     welcome?: string;
@@ -16,6 +17,7 @@ export interface GuildConfig {
   };
   ticketMessageId?: string;
   openTickets?: Record<string, { categoryId: string; textId?: string; voiceId?: string }>; // key: userId
+  verificationEmails?: Record<string, string>; // email -> userId
 }
 
 interface ConfigFile {

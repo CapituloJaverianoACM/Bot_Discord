@@ -8,6 +8,9 @@ const data = new SlashCommandBuilder()
   .addStringOption((opt) => opt.setName('role_admin').setDescription('Rol admin').setRequired(true))
   .addStringOption((opt) => opt.setName('role_junta').setDescription('Rol junta').setRequired(true))
   .addStringOption((opt) =>
+    opt.setName('role_verify').setDescription('Rol verificado').setRequired(true),
+  )
+  .addStringOption((opt) =>
     opt
       .setName('channel_welcome')
       .setDescription('Canal de bienvenida (default general)')
@@ -35,6 +38,7 @@ async function execute(interaction: any) {
     roles: {
       admin: interaction.options.getString('role_admin', true),
       junta: interaction.options.getString('role_junta', true),
+      verify: interaction.options.getString('role_verify', true),
     },
     channels: {
       welcome: interaction.options.getString('channel_welcome', true),
@@ -54,6 +58,7 @@ async function execute(interaction: any) {
     fields: [
       { name: 'Admin', value: `<@&${config.roles.admin}>`, inline: true },
       { name: 'Junta', value: `<@&${config.roles.junta}>`, inline: true },
+      { name: 'Verificado', value: `<@&${config.roles.verify}>`, inline: true },
       { name: 'Welcome', value: `<#${config.channels.welcome}>`, inline: true },
       { name: 'Ticket', value: `<#${config.channels.ticketTrigger}>`, inline: true },
       { name: 'VC Create', value: `<#${config.channels.vcCreate}>`, inline: true },
