@@ -8,18 +8,22 @@ export default {
   async execute(reaction: any, user: any) {
     try {
       if (user.bot) return;
-      const guild = reaction.message.guild;
+      if (reaction.partial) await reaction.fetch();
+      if (reaction.message?.partial) await reaction.message.fetch();
+      const guild = reaction.message?.guild;
       if (!guild) return;
+
       const cfg = getGuildConfig(guild.id);
       if (!cfg?.channels.ticketTrigger) return;
       if (reaction.message.channelId !== cfg.channels.ticketTrigger) return;
+      if (reaction.emoji?.name !== '🎫') return;
 
-      // Ensure full reaction/message data
-      if (reaction.partial) await reaction.fetch();
-      if (reaction.message.partial) await reaction.message.fetch();
-
-      // Only respond to 🎫
-      if (reaction.emoji.name !== '🎫') return;
+      // Remove the user's reaction to keep the trigger clean
+      try {
+        await reaction.users.remove(user.id).catch(() => {});
+      } catch (err) {
+        console.error('Failed to remove reaction', err);
+      }
 
       // Create category for the ticket
       const category = await guild.channels.create({
