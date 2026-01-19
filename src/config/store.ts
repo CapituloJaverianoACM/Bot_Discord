@@ -14,6 +14,7 @@ export interface GuildConfig {
     vcPool?: string[];
     voiceCategory?: string;
   };
+  ticketMessageId?: string;
 }
 
 interface ConfigFile {

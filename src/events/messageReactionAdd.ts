@@ -1,6 +1,8 @@
 import { buildEmbed } from '../utils/embed';
 import { getGuildConfig } from '../config/store';
 
+const EPHEMERAL_FLAG = 1 << 6; // Discord API flag
+
 // Ticket creation via reaction on the configured ticket trigger channel/message
 export default {
   name: 'messageReactionAdd',
@@ -19,10 +21,27 @@ export default {
       if (reaction.emoji?.name !== '🎫') return;
 
       // Remove the user's reaction to keep the trigger clean
-      try {
-        await reaction.users.remove(user.id).catch(() => {});
-      } catch (err) {
-        console.error('Failed to remove reaction', err);
+      await reaction.users.remove(user.id).catch(() => {});
+
+      // Enforce one open ticket per user: if a category with their ticket name exists, ping them in their ticket text channel instead of creating a new one.
+      const existingCategory: any = guild.channels.cache.find(
+        (ch: any) => ch.type === 4 && ch.name === `ticket-${user.username}`,
+      );
+      if (existingCategory) {
+        const ticketText = guild.channels.cache.find(
+          (ch: any) =>
+            ch.parentId === existingCategory.id && ch.name === `ticket-${user.username}-txt`,
+        );
+        const notifyPayload = {
+          content: `<@${user.id}> ya tienes un ticket abierto.`,
+          flags: EPHEMERAL_FLAG,
+        };
+        if (ticketText && ticketText.isTextBased?.()) {
+          await ticketText.send(notifyPayload).catch(() => {});
+        } else {
+          await reaction.message.channel.send(notifyPayload).catch(() => {});
+        }
+        return;
       }
 
       // Create category for the ticket
