@@ -15,6 +15,7 @@ export interface GuildConfig {
     voiceCategory?: string;
   };
   ticketMessageId?: string;
+  openTickets?: Record<string, { categoryId: string; textId?: string; voiceId?: string }>; // key: userId
 }
 
 interface ConfigFile {

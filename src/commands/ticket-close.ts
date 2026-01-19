@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, PermissionsBitField } from 'discord.js';
 import { buildEmbed } from '../utils/embed';
+import { getGuildConfig, upsertGuildConfig } from '../config/store';
 
 const EPHEMERAL_FLAG = 1 << 6;
 
@@ -17,6 +18,9 @@ async function execute(interaction: any) {
   }
   const channel = interaction.channel;
   const category = channel?.parent;
+  const guildId = interaction.guildId;
+  const cfg = guildId ? getGuildConfig(guildId) : undefined;
+
   try {
     const respond =
       interaction.deferred || interaction.replied
@@ -27,6 +31,15 @@ async function execute(interaction: any) {
       embeds: [buildEmbed({ title: 'Ticket', description: 'Ticket cerrado' })],
       flags: EPHEMERAL_FLAG,
     });
+
+    // Clean up stored open ticket if it matches
+    if (cfg?.openTickets) {
+      const entry = Object.entries(cfg.openTickets).find(([, t]) => t.categoryId === category?.id);
+      if (entry) {
+        delete cfg.openTickets[entry[0]];
+        upsertGuildConfig({ ...cfg, guildId });
+      }
+    }
 
     if (channel && channel.deletable) await channel.delete('Ticket cerrado');
     if (category && category.children) {

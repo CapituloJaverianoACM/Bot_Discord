@@ -1,5 +1,5 @@
 import { buildEmbed } from '../utils/embed';
-import { getGuildConfig } from '../config/store';
+import { getGuildConfig, upsertGuildConfig } from '../config/store';
 
 const EPHEMERAL_FLAG = 1 << 6; // Discord API flag
 
@@ -23,21 +23,24 @@ export default {
       // Remove the user's reaction to keep the trigger clean
       await reaction.users.remove(user.id).catch(() => {});
 
-      // Enforce one open ticket per user: if a category with their ticket name exists, ping them in their ticket text channel instead of creating a new one.
-      const existingCategory: any = guild.channels.cache.find(
-        (ch: any) => ch.type === 4 && ch.name === `ticket-${user.username}`,
-      );
-      if (existingCategory) {
-        const ticketText = guild.channels.cache.find(
-          (ch: any) =>
-            ch.parentId === existingCategory.id && ch.name === `ticket-${user.username}-txt`,
-        );
+      const openTickets = cfg.openTickets || {};
+      const existingTicket = openTickets[user.id];
+
+      // Enforce one open ticket per user: if exists, ping in their ticket text channel
+      if (existingTicket) {
+        const ticketText = existingTicket.textId
+          ? guild.channels.cache.get(existingTicket.textId)
+          : guild.channels.cache.find(
+              (ch: any) =>
+                ch.parentId === existingTicket.categoryId &&
+                ch.name === `ticket-${user.username}-txt`,
+            );
         const notifyPayload = {
           content: `<@${user.id}> ya tienes un ticket abierto.`,
           flags: EPHEMERAL_FLAG,
         };
         if (ticketText && ticketText.isTextBased?.()) {
-          await ticketText.send(notifyPayload).catch(() => {});
+          await (ticketText as any).send(notifyPayload).catch(() => {});
         } else {
           await reaction.message.channel.send(notifyPayload).catch(() => {});
         }
@@ -78,6 +81,10 @@ export default {
           deny: p.deny.toArray(),
         })),
       });
+
+      // Persist open ticket for this user
+      openTickets[user.id] = { categoryId: category.id, textId: text.id, voiceId: voice.id };
+      upsertGuildConfig({ ...cfg, guildId: guild.id, openTickets });
 
       const embed = buildEmbed({
         title: 'Ticket creado',
