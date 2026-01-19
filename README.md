@@ -10,20 +10,24 @@ bun install
 
 2. Copiar `.env.example` a `.env` y rellenar valores reales.
 
-3. Registrar comandos en tu servidor de prueba:
+3. Registrar comandos en tu servidor de prueba (usa DEPLOY_TARGET=test por defecto):
 
 ```powershell
-# usa DEPLOY_TARGET=test por defecto
-DEPLOY_TARGET=test bun run src/deploy-commands.ts
+bun run deploy:dev
 ```
 
-4. Ejecutar en desarrollo:
+4. Listar los comandos registrados en la guild de test (opcional):
 
 ```powershell
-bun run src/index.ts
+bun run commands:list
+```
+
+5. Ejecutar en desarrollo:
+
+```powershell
+bun run dev
 ```
 
 Notas
 - Usa ramas `feature/*` para nuevas funcionalidades.
-- CI: hay un workflow de GitHub Actions que valida build y lint en PRs.
-
+- CI: hay un workflow de GitHub Actions que valida typecheck y lint en PRs.
