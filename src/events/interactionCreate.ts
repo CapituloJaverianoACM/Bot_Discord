@@ -26,8 +26,9 @@ export default {
         return;
       }
 
-      // Single-response flow: defer early so slow handlers don't hit the 3s window.
+      // Optional deferral: only if the command opts-in via defer=true
       if (
+        command.defer &&
         !interaction.deferred &&
         !interaction.replied &&
         typeof interaction.deferReply === 'function'

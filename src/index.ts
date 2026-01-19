@@ -17,9 +17,10 @@ process.emitWarning = (warning: any, ...args: any[]) => {
 };
 
 import 'dotenv/config';
-import { Client, GatewayIntentBits, Collection, Partials } from 'discord.js';
+import { Client, GatewayIntentBits, Partials, Collection } from 'discord.js';
 import fs from 'fs';
 import path from 'path';
+import { pathToFileURL } from 'url';
 
 interface BotClient extends Client {
   commands: Collection<string, any>;
@@ -47,11 +48,16 @@ client.commands = new Collection();
 const commandsPath = path.join(process.cwd(), 'src', 'commands');
 for (const file of fs.readdirSync(commandsPath)) {
   if (!file.endsWith('.ts') && !file.endsWith('.js')) continue;
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const cmd = require(path.join(commandsPath, file));
-  const command = cmd.default || cmd;
-  if (command && command.data && command.execute) {
-    client.commands.set(command.data.name, command);
+  const filePath = path.join(commandsPath, file);
+  try {
+    const mod = await import(pathToFileURL(filePath).toString());
+    const command = mod.default || mod;
+    if (command && command.data && command.execute) {
+      client.commands.set(command.data.name, command);
+      console.log(`Loaded command: ${command.data.name}`);
+    }
+  } catch (err) {
+    console.error(`Failed to load command ${file}`, err);
   }
 }
 
@@ -59,15 +65,20 @@ for (const file of fs.readdirSync(commandsPath)) {
 const eventsPath = path.join(process.cwd(), 'src', 'events');
 for (const file of fs.readdirSync(eventsPath)) {
   if (!file.endsWith('.ts') && !file.endsWith('.js')) continue;
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const evt = require(path.join(eventsPath, file));
-  const event = evt.default || evt;
-  if (event && event.name && event.execute) {
-    const names = Array.isArray(event.name) ? event.name : [event.name];
-    for (const name of names) {
-      if (event.once) client.once(name, (...args: any[]) => event.execute(...args));
-      else client.on(name, (...args: any[]) => event.execute(...args));
+  const filePath = path.join(eventsPath, file);
+  try {
+    const mod = await import(pathToFileURL(filePath).toString());
+    const event = mod.default || mod;
+    if (event && event.name && event.execute) {
+      const names = Array.isArray(event.name) ? event.name : [event.name];
+      for (const name of names) {
+        if (event.once) client.once(name, (...args: any[]) => event.execute(...args));
+        else client.on(name, (...args: any[]) => event.execute(...args));
+      }
+      console.log(`Loaded event: ${file}`);
     }
+  } catch (err) {
+    console.error(`Failed to load event ${file}`, err);
   }
 }
 

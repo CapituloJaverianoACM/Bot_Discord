@@ -13,11 +13,6 @@ const guildIdProd = process.env.GUILD_ID_PROD;
 const deployTarget = process.env.DEPLOY_TARGET || 'test';
 const targetGuild = (deployTarget === 'prod' ? guildIdProd : guildIdTest) as string | undefined;
 
-if (!token || !clientId) {
-  console.error('[deploy] Missing DISCORD_TOKEN or CLIENT_ID in environment');
-  process.exit(1);
-}
-
 const commands: RESTPostAPIApplicationCommandsJSONBody[] = [];
 
 async function loadCommands() {
@@ -49,7 +44,7 @@ async function loadCommands() {
   }
 }
 
-const rest = new REST({ version: '10' }).setToken(token);
+const rest = new REST({ version: '10' }).setToken(token || '');
 
 async function deploy() {
   await loadCommands();
@@ -61,8 +56,12 @@ async function deploy() {
     console.error(`Guild id not set for target ${deployTarget}`);
     process.exit(1);
   }
+  if (!clientId) {
+    console.error('[deploy] CLIENT_ID not set');
+    process.exit(1);
+  }
   const guildId: string = targetGuild;
-  const clientIdStr: string = clientId as string;
+  const clientIdStr: string = clientId;
   try {
     console.log(
       `Registering ${commands.length} commands to ${deployTarget.toUpperCase()} guild ${guildId}`,
