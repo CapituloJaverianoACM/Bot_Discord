@@ -1,0 +1,21 @@
+name: CI
+        run: bun run lint
+      - name: Lint
+        run: bun run typecheck
+      - name: Typecheck
+        run: bun install
+      - name: Install dependencies
+        uses: oven-sh/bun@v1
+      - name: Setup Bun
+      - uses: actions/checkout@v4
+    steps:
+    runs-on: ubuntu-latest
+  build:
+jobs:
+
+    branches: [main]
+  push:
+  pull_request:
+on:
+
+
