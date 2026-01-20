@@ -29,12 +29,14 @@ bun run dev
 ```
 
 ## Comandos clave
-- `/setup`: configura roles y canales (admin/junta).
+- `/setup`: configura roles y canales (admin/junta). Ahora incluye canal de anuncios y rol de ping para eventos/anuncios.
 - `/ticketmessage`: publica el mensaje para crear tickets (reacciona con 🎫).
 - `/ticketclose`: cierra el ticket actual (solo junta/admin con permisos de canal).
-- `/clear [amount]`: borra mensajes (requiere ManageMessages).
-- `/presence set|clear`: ajusta el presence (admin/junta).
-- `/ping`: prueba de latencia.
+- `/clear [value] [unit] [color]`: borra mensajes (mensajes u horas/días), responde público y se autodeletea.
+- `/presence set|clear`: ajusta el presence (admin/junta) con tipo/estado/color.
+- `/verify start|code`: verificación por correo (OTP) y asignación de rol verificado.
+- `/announce`: publica un anuncio en el canal de anuncios configurado, con título/opcional ping/color.
+- `/event create|cancel|list`: crea/cancela/lista eventos programados (external o voice), con ping opcional al rol de eventos.
 
 ## Funcionalidades
 - Tickets por reacción: reacciona con 🎫 en el canal configurado, se crea categoría + canal de texto + VC con permisos para solicitante y junta.

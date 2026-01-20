@@ -1,4 +1,11 @@
 import { getGuildConfig } from '../config/store';
+import { setVoiceState, clearVoiceState } from '../utils/voiceMasterState';
+import {
+  ActionRowBuilder,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
+  ChannelType,
+} from 'discord.js';
 
 const TEMP_VC_IDLE_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -8,12 +15,42 @@ async function scheduleCleanup(channel: any) {
       if (!channel || !channel.guild) return;
       const current = channel.members?.filter((m: any) => !m.user.bot);
       if (!current || current.size === 0) {
+        clearVoiceState(channel.id);
         if (channel.deletable) await channel.delete('Temp VC cleanup');
       }
     } catch (err) {
       console.error('Temp VC cleanup error', err);
     }
   }, TEMP_VC_IDLE_MS);
+}
+
+function buildControls(vcId: string) {
+  const settings = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(`vm:settings:${vcId}`)
+      .setPlaceholder('Channel Settings')
+      .addOptions(
+        new StringSelectMenuOptionBuilder().setLabel('Name').setValue('name'),
+        new StringSelectMenuOptionBuilder().setLabel('Limit').setValue('limit'),
+        new StringSelectMenuOptionBuilder().setLabel('Status').setValue('status'),
+        new StringSelectMenuOptionBuilder().setLabel('Game').setValue('game'),
+        new StringSelectMenuOptionBuilder().setLabel('LFM').setValue('lfm'),
+      ),
+  );
+
+  const perms = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(`vm:perms:${vcId}`)
+      .setPlaceholder('Channel Permissions')
+      .addOptions(
+        new StringSelectMenuOptionBuilder().setLabel('Lock').setValue('lock'),
+        new StringSelectMenuOptionBuilder().setLabel('Unlock').setValue('unlock'),
+        new StringSelectMenuOptionBuilder().setLabel('Permit').setValue('permit'),
+        new StringSelectMenuOptionBuilder().setLabel('Reject').setValue('reject'),
+        new StringSelectMenuOptionBuilder().setLabel('Invite').setValue('invite'),
+      ),
+  );
+  return [settings, perms];
 }
 
 export default {
@@ -24,33 +61,45 @@ export default {
       if (!newState.channel || newState.member?.user.bot) return;
       const guild = newState.guild;
       const cfg = getGuildConfig(guild.id);
-      if (!cfg?.channels.vcCreate) return;
+      if (!cfg?.channels.vcCreate || !cfg.channels.voiceCategory) return;
+
       const vcCreateId = cfg.channels.vcCreate;
-      const pool = cfg.channels.vcPool || [];
       const voiceCategory = cfg.channels.voiceCategory;
 
       // User joined the VC CREATE channel
       if (newState.channelId === vcCreateId) {
-        // find a free vc in pool
-        let target = pool
-          .map((id) => guild.channels.cache.get(id))
-          .find(
-            (ch: any) =>
-              ch && ch.isVoiceBased?.() && ch.members.filter((m: any) => !m.user.bot).size === 0,
-          );
+        const baseName = newState.member?.user?.username || 'Temp';
+        const name = `🎙️║VC ${baseName}`;
+        const target = await guild.channels.create({
+          name,
+          type: ChannelType.GuildVoice,
+          parent: voiceCategory,
+        });
+        await newState.member?.voice.setChannel(target, 'Auto-move from VC CREATE');
+        scheduleCleanup(target);
 
-        // if none, create temp
-        if (!target && voiceCategory) {
-          target = await guild.channels.create({
-            name: `Temp VC ${Date.now().toString().slice(-4)}`,
-            type: 2,
-            parent: voiceCategory,
-          });
-          scheduleCleanup(target);
-        }
-
-        if (target) {
-          await newState.member?.voice.setChannel(target, 'Auto-move from VC CREATE');
+        // Post control embed in the voice channel chat itself (no extra text channel)
+        const embed = {
+          title: 'VC Controls',
+          description: `Creador: <@${newState.member.id}>\nStatus: -\nUsa los menús para configurar tu canal. Sólo el creador o junta/admin pueden cambiarlo.`,
+        };
+        const rows = buildControls(target.id);
+        try {
+          const controlMsg = await (target as any).send?.({ embeds: [embed], components: rows });
+          if (controlMsg) {
+            setVoiceState(target.id, {
+              ownerId: newState.member.id,
+              voiceChannelId: target.id,
+              textChannelId: target.id,
+              controlMessageId: controlMsg.id,
+              baseName,
+              emoji: '🎙️',
+              status: '-',
+              lfm: false,
+            });
+          }
+        } catch (sendErr) {
+          console.error('Failed to send controls to voice channel chat', sendErr);
         }
       }
     } catch (err) {

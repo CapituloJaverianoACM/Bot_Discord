@@ -23,3 +23,9 @@ export function buildEmbed({
   if (footer) embed.setFooter({ text: footer });
   return embed;
 }
+
+export function parseHexColor(input?: string) {
+  if (!input) return undefined;
+  const hex = input.trim();
+  return /^#?[0-9a-fA-F]{6}$/.test(hex) ? (hex.startsWith('#') ? hex : `#${hex}`) : undefined;
+}

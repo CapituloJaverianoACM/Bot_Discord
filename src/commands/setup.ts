@@ -10,6 +10,7 @@ const data = new SlashCommandBuilder()
   .addStringOption((opt) =>
     opt.setName('role_verify').setDescription('Rol verificado').setRequired(true),
   )
+  // required channel options
   .addStringOption((opt) =>
     opt
       .setName('channel_welcome')
@@ -20,12 +21,22 @@ const data = new SlashCommandBuilder()
     opt.setName('channel_ticket').setDescription('Canal donde se crea el ticket').setRequired(true),
   )
   .addStringOption((opt) =>
+    opt.setName('channel_announcements').setDescription('Canal de anuncios').setRequired(true),
+  )
+  .addStringOption((opt) =>
     opt.setName('channel_vc_create').setDescription('Canal VC CREATE').setRequired(true),
   )
   .addStringOption((opt) => opt.setName('channel_vc1').setDescription('VC #1').setRequired(true))
   .addStringOption((opt) => opt.setName('channel_vc2').setDescription('VC #2').setRequired(true))
   .addStringOption((opt) =>
     opt.setName('category_voice').setDescription('Categoría VOZ').setRequired(true),
+  )
+  // optional goes after required ones
+  .addStringOption((opt) =>
+    opt
+      .setName('role_event_ping')
+      .setDescription('Rol para avisos de eventos/anuncios')
+      .setRequired(false),
   );
 
 async function execute(interaction: any) {
@@ -39,10 +50,12 @@ async function execute(interaction: any) {
       admin: interaction.options.getString('role_admin', true),
       junta: interaction.options.getString('role_junta', true),
       verify: interaction.options.getString('role_verify', true),
+      eventPing: interaction.options.getString('role_event_ping') ?? undefined,
     },
     channels: {
       welcome: interaction.options.getString('channel_welcome', true),
       ticketTrigger: interaction.options.getString('channel_ticket', true),
+      announcements: interaction.options.getString('channel_announcements', true),
       vcCreate: interaction.options.getString('channel_vc_create', true),
       vcPool: [
         interaction.options.getString('channel_vc1', true),
@@ -59,8 +72,14 @@ async function execute(interaction: any) {
       { name: 'Admin', value: `<@&${config.roles.admin}>`, inline: true },
       { name: 'Junta', value: `<@&${config.roles.junta}>`, inline: true },
       { name: 'Verificado', value: `<@&${config.roles.verify}>`, inline: true },
+      {
+        name: 'Rol eventos',
+        value: config.roles.eventPing ? `<@&${config.roles.eventPing}>` : 'N/A',
+        inline: true,
+      },
       { name: 'Welcome', value: `<#${config.channels.welcome}>`, inline: true },
       { name: 'Ticket', value: `<#${config.channels.ticketTrigger}>`, inline: true },
+      { name: 'Anuncios', value: `<#${config.channels.announcements}>`, inline: true },
       { name: 'VC Create', value: `<#${config.channels.vcCreate}>`, inline: true },
       {
         name: 'VC Pool',

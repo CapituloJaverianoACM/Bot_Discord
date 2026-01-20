@@ -2,6 +2,7 @@ import { SlashCommandBuilder, PermissionsBitField } from 'discord.js';
 import { buildEmbed } from '../utils/embed';
 import { getGuildConfig, upsertGuildConfig } from '../config/store';
 import { generateOtp, verifyOtp, pendingOtp } from '../utils/otp';
+import { sendOtpEmail } from '../utils/mailer';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -22,11 +23,6 @@ const data = new SlashCommandBuilder()
       .setDescription('Confirma el OTP enviado a tu correo')
       .addStringOption((opt) => opt.setName('otp').setDescription('Código OTP').setRequired(true)),
   );
-
-async function sendOtp(email: string, code: string) {
-  // Placeholder: implement real email send via SMTP/API.
-  console.log(`[OTP] Send to ${email}: ${code}`);
-}
 
 async function execute(interaction: any) {
   const sub = interaction.options.getSubcommand();
@@ -70,7 +66,15 @@ async function execute(interaction: any) {
     }
 
     const code = generateOtp(guildId, member.id, email);
-    await sendOtp(email, code);
+    try {
+      await sendOtpEmail(email, code);
+    } catch (err) {
+      console.error('Error enviando OTP', err);
+      return interaction.reply({
+        content: 'No se pudo enviar el correo. Revisa la configuración SMTP.',
+        flags: 1 << 6,
+      });
+    }
     const embed = buildEmbed({
       title: 'Verificación iniciada',
       description: `Enviamos un código a ${email}. Usa /verify code <OTP>.`,

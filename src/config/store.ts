@@ -7,6 +7,7 @@ export interface GuildConfig {
     admin?: string;
     junta?: string;
     verify?: string;
+    eventPing?: string;
   };
   channels: {
     welcome?: string;
@@ -14,6 +15,7 @@ export interface GuildConfig {
     vcCreate?: string;
     vcPool?: string[];
     voiceCategory?: string;
+    announcements?: string;
   };
   ticketMessageId?: string;
   openTickets?: Record<string, { categoryId: string; textId?: string; voiceId?: string }>; // key: userId
