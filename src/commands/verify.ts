@@ -73,7 +73,7 @@ async function execute(interaction: any) {
     }
 
     try {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: 1 << 6 });
     } catch (deferErr) {
       console.error('No se pudo deferir la respuesta de /verify start', deferErr);
       return interaction.reply({
