@@ -26,12 +26,12 @@ interface ConfigFile {
   guilds: Record<string, GuildConfig>;
 }
 
-const bucket = process.env.S3_BUCKET;
+const bucket = process.env.AWS_S3_BUCKET_NAME;
 const key = process.env.CONFIG_KEY || 'config/config.json';
-const region = process.env.S3_REGION || 'us-east-1';
-const endpoint = process.env.S3_ENDPOINT;
-const accessKeyId = process.env.S3_ACCESS_KEY;
-const secretAccessKey = process.env.S3_SECRET_KEY;
+const region = process.env.AWS_DEFAULT_REGION || 'us-east-1';
+const endpoint = process.env.AWS_ENDPOINT_URL;
+const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
 
 const s3 = bucket
   ? new S3Client({
@@ -97,7 +97,7 @@ async function saveToBucket(): Promise<void> {
 
 const configReady = (async () => {
   if (!s3 || !bucket) {
-    console.warn('[config] S3_BUCKET not set; using in-memory config only');
+    console.warn('[config] AWS_S3_BUCKET_NAME not set; using in-memory config only');
     return;
   }
   const loaded = await loadFromBucket();
