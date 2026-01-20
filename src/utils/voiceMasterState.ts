@@ -19,6 +19,11 @@ export function getVoiceState(vcId: string): VoiceMasterState | undefined {
   return state.get(vcId);
 }
 
+/**
+ * Elimina el estado de un canal de voz temporal
+ * @param {string} vcId - ID del canal de voz
+ * @returns {void}
+ */
 export function clearVoiceState(vcId: string) {
   state.delete(vcId);
 }

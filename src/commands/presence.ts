@@ -1,6 +1,14 @@
+/**
+ * @file presence.ts
+ * @description Comando para configurar la presencia/actividad del bot (rich presence).
+ * Permite establecer texto personalizado, tipo de actividad, estado y URL (para streaming).
+ * Solo accesible para administradores.
+ */
+
 import { SlashCommandBuilder, ActivityType, PermissionsBitField } from 'discord.js';
 import { buildEmbed } from '../utils/embed';
 
+/** Definición del comando /presence con subcomandos set y clear */
 const data = new SlashCommandBuilder()
   .setName('presence')
   .setDescription('Configura el rich presence del bot')
@@ -40,6 +48,11 @@ const data = new SlashCommandBuilder()
   )
   .addSubcommand((sub) => sub.setName('clear').setDescription('Limpia el presence'));
 
+/**
+ * Ejecuta el comando presence para configurar la actividad del bot
+ * @param {any} interaction - La interacción de Discord
+ * @returns {Promise<void>}
+ */
 async function execute(interaction: any) {
   if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator)) {
     return interaction.reply({ content: 'Solo admin/junta.', flags: 1 << 6 });

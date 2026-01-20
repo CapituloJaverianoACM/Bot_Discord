@@ -31,6 +31,11 @@ const data = new SlashCommandBuilder()
       .addStringOption((opt) => opt.setName('otp').setDescription('Código OTP').setRequired(true)),
   );
 
+/**
+ * Ejecuta el comando verify para el proceso de verificación por correo
+ * @param {any} interaction - La interacción de Discord
+ * @returns {Promise<void>}
+ */
 async function execute(interaction: any) {
   const sub = interaction.options.getSubcommand();
   const guildId = interaction.guildId;

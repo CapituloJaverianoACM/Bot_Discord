@@ -9,6 +9,11 @@ const data = new SlashCommandBuilder()
     opt.setName('description').setDescription('Descripción del ticket').setRequired(false),
   );
 
+/**
+ * Ejecuta el comando ticketmessage para publicar el mensaje de tickets
+ * @param {any} interaction - La interacción de Discord
+ * @returns {Promise<void>}
+ */
 async function execute(interaction: any) {
   if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageChannels)) {
     return interaction.reply({ content: 'Solo junta/admin.', flags: 1 << 6 });

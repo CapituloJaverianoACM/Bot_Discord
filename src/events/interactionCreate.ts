@@ -353,6 +353,12 @@ async function showSelector(
   }
 }
 
+/**
+ * Actualiza el mensaje de control del canal de voz con el estado actual
+ * @param {any} guild - El servidor
+ * @param {any} state - Estado del canal de voz temporal
+ * @returns {Promise<void>}
+ */
 async function updateControlStatus(guild: any, state: any) {
   try {
     const textChannel: any = guild.channels.cache.get(state.textChannelId);

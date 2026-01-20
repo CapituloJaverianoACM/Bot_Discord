@@ -1,8 +1,17 @@
+/**
+ * @file clear.ts
+ * @description Comando para limpiar mensajes en un canal.
+ * Soporta borrar por cantidad de mensajes o por ventana de tiempo (horas/días).
+ * Requiere permiso de Manage Messages.
+ */
+
 import { SlashCommandBuilder, PermissionsBitField } from 'discord.js';
 import { buildEmbed } from '../utils/embed';
 
+/** Flag de Discord para respuestas efímeras (solo visible para el usuario) */
 const EPHEMERAL_FLAG = 1 << 6;
 
+/** Definición del comando /clear con sus opciones */
 const data = new SlashCommandBuilder()
   .setName('clear')
   .setDescription('Limpia mensajes recientes')
@@ -25,6 +34,11 @@ const data = new SlashCommandBuilder()
       ),
   );
 
+/**
+ * Ejecuta el comando clear para borrar mensajes
+ * @param {any} interaction - La interacción de Discord
+ * @returns {Promise<void>}
+ */
 async function execute(interaction: any) {
   if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageMessages)) {
     return interaction.reply({

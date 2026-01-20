@@ -53,6 +53,12 @@ function buildControls(vcId: string) {
   return [settings, perms];
 }
 
+/**
+ * Manejador del evento voiceStateUpdate para el sistema Voice Master
+ * @property {string} name - Nombre del evento
+ * @property {boolean} once - Si el evento debe ejecutarse solo una vez
+ * @property {Function} execute - Función a ejecutar cuando cambia el estado de voz
+ */
 export default {
   name: 'voiceStateUpdate',
   once: false,

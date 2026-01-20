@@ -14,8 +14,13 @@ if (!token || !clientId) {
   process.exit(1);
 }
 
+/** Cliente REST de Discord */
 const rest = new REST({ version: '10' }).setToken(token);
 
+/**
+ * Función principal que lista los comandos registrados
+ * @returns {Promise<void>}
+ */
 async function main() {
   try {
     const guildId = targetGuild;

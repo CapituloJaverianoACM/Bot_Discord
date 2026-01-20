@@ -1,5 +1,13 @@
-// Filter a specific Discord.js deprecation warning about the ready/clientReady rename.
-// This keeps other warnings intact while removing this noisy message.
+/**
+ * @file index.ts
+ * @description Punto de entrada principal del bot de Discord.
+ * Inicializa el cliente, carga comandos y eventos, y establece la conexión con Discord.
+ */
+
+/**
+ * Filtro personalizado para suprimir advertencias de depreciación específicas de Discord.js
+ * Mantiene otras advertencias intactas mientras elimina el mensaje ruidoso sobre ready/clientReady.
+ */
 const _origEmitWarning = process.emitWarning.bind(process);
 process.emitWarning = (warning: any, ...args: any[]) => {
   try {
@@ -22,17 +30,35 @@ import fs from 'fs';
 import path from 'path';
 import { pathToFileURL } from 'url';
 
+/**
+ * @interface BotClient
+ * @extends Client
+ * @description Extensión del cliente de Discord.js con colección de comandos
+ */
 interface BotClient extends Client {
+  /** Colección de comandos del bot indexados por nombre */
   commands: Collection<string, any>;
 }
 
+/**
+ * Token de autenticación del bot obtenido de las variables de entorno
+ */
 const token = process.env.DISCORD_TOKEN;
 if (!token) {
   console.error('DISCORD_TOKEN not set in environment');
   process.exit(1);
 }
 
-// Add message-related intents so the bot receives message events and content
+/**
+ * Cliente del bot con intents configurados para:
+ * - Guilds (servidores)
+ * - Miembros del servidor
+ * - Mensajes de texto
+ * - Contenido de mensajes
+ * - Mensajes directos
+ * - Estados de voz
+ * - Reacciones a mensajes
+ */
 const client: BotClient = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -47,7 +73,10 @@ const client: BotClient = new Client({
 }) as BotClient;
 client.commands = new Collection();
 
-// Load commands
+/**
+ * Carga dinámica de comandos desde el directorio src/commands
+ * Lee todos los archivos .ts/.js y registra los comandos válidos
+ */
 const commandsPath = path.join(process.cwd(), 'src', 'commands');
 for (const file of fs.readdirSync(commandsPath)) {
   if (!file.endsWith('.ts') && !file.endsWith('.js')) continue;
@@ -64,7 +93,10 @@ for (const file of fs.readdirSync(commandsPath)) {
   }
 }
 
-// Load events
+/**
+ * Carga dinámica de eventos desde el directorio src/events
+ * Registra los manejadores de eventos del bot
+ */
 const eventsPath = path.join(process.cwd(), 'src', 'events');
 for (const file of fs.readdirSync(eventsPath)) {
   if (!file.endsWith('.ts') && !file.endsWith('.js')) continue;

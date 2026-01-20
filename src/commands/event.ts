@@ -1,3 +1,10 @@
+/**
+ * @file event.ts
+ * @description Comando para gestionar eventos programados del servidor (scheduled events).
+ * Permite crear, cancelar y listar eventos, con soporte para eventos externos y de voz.
+ * Solo accesible para administradores.
+ */
+
 import {
   SlashCommandBuilder,
   PermissionsBitField,
@@ -8,6 +15,7 @@ import {
 import { buildEmbed, parseHexColor } from '../utils/embed';
 import { getGuildConfig } from '../config/store';
 
+/** Definición del comando /event con sus subcomandos */
 const data = new SlashCommandBuilder()
   .setName('event')
   .setDescription('Gestiona eventos (scheduled events)')
@@ -68,6 +76,11 @@ const data = new SlashCommandBuilder()
   )
   .addSubcommand((sub) => sub.setName('list').setDescription('Lista eventos programados (máx 10)'));
 
+/**
+ * Ejecuta el comando event para gestionar eventos programados
+ * @param {any} interaction - La interacción de Discord
+ * @returns {Promise<void>}
+ */
 async function execute(interaction: any) {
   if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator)) {
     return interaction.reply({ content: 'Solo admin/junta.', flags: 1 << 6 });

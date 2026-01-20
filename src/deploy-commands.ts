@@ -1,3 +1,13 @@
+/**
+ * @file deploy-commands.ts
+ * @description Script para registrar comandos slash de Discord en un servidor específico.
+ * Soporta deployment a servidores de prueba (test) y producción (prod).
+ *
+ * Uso:
+ * - Test: bun run deploy:dev (o DEPLOY_TARGET=test)
+ * - Producción: bun run deploy:prod (o DEPLOY_TARGET=prod)
+ */
+
 import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
@@ -6,15 +16,26 @@ import { Routes } from 'discord-api-types/v10';
 import type { RESTPostAPIApplicationCommandsJSONBody } from 'discord-api-types/v10';
 import { pathToFileURL } from 'url';
 
+/** Token de autenticación del bot */
 const token = process.env.DISCORD_TOKEN;
+/** ID de la aplicación del bot */
 const clientId = process.env.CLIENT_ID;
+/** ID del servidor de pruebas */
 const guildIdTest = process.env.GUILD_ID_TEST;
+/** ID del servidor de producción */
 const guildIdProd = process.env.GUILD_ID_PROD;
+/** Objetivo del deployment: 'test' o 'prod' */
 const deployTarget = process.env.DEPLOY_TARGET || 'test';
+/** Guild objetivo según el deployment target */
 const targetGuild = (deployTarget === 'prod' ? guildIdProd : guildIdTest) as string | undefined;
 
+/** Array de comandos a registrar */
 const commands: RESTPostAPIApplicationCommandsJSONBody[] = [];
 
+/**
+ * Carga todos los comandos desde el directorio src/commands
+ * @returns {Promise<void>}
+ */
 async function loadCommands() {
   const commandsPath = path.join(process.cwd(), 'src', 'commands');
   console.log(
@@ -44,8 +65,13 @@ async function loadCommands() {
   }
 }
 
+/** Cliente REST de Discord para realizar peticiones a la API */
 const rest = new REST({ version: '10' }).setToken(token || '');
 
+/**
+ * Despliega los comandos cargados al servidor de Discord especificado
+ * @returns {Promise<void>}
+ */
 async function deploy() {
   await loadCommands();
   if (commands.length === 0) {

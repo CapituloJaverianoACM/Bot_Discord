@@ -1,6 +1,18 @@
+/**
+ * @file guildMemberAdd.ts
+ * @description Evento que se dispara cuando un nuevo miembro se une al servidor.
+ * Envía un mensaje de bienvenida al canal configurado.
+ */
+
 import { buildEmbed } from '../utils/embed';
 import { getGuildConfig } from '../config/store';
 
+/**
+ * Manejador del evento guildMemberAdd
+ * @property {string} name - Nombre del evento
+ * @property {boolean} once - Si el evento debe ejecutarse solo una vez
+ * @property {Function} execute - Función a ejecutar cuando un miembro se une
+ */
 export default {
   name: 'guildMemberAdd',
   once: false,

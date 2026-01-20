@@ -187,6 +187,14 @@ export async function sendOtpEmail(to: string, code: string) {
   }
 }
 
+/**
+ * Envía un correo electrónico con código OTP vía API HTTP
+ * @param {HttpMailConfig} cfg - Configuración HTTP
+ * @param {string} to - Dirección de correo del destinatario
+ * @param {string} code - Código OTP a enviar
+ * @returns {Promise<any>} Respuesta de la API
+ * @throws {Error} Si falla el envío
+ */
 async function sendViaHttpApi(cfg: HttpMailConfig, to: string, code: string) {
   const startedAt = Date.now();
   const controller = new AbortController();
