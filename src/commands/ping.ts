@@ -1,7 +1,19 @@
+/**
+ * @file ping.ts
+ * @description Comando simple para verificar la latencia del bot.
+ * Responde con "Pong!" y muestra el tiempo de ida y vuelta.
+ */
+
 import { SlashCommandBuilder } from 'discord.js';
 
+/** Definición del comando /ping */
 const data = new SlashCommandBuilder().setName('ping').setDescription('Replies with Pong!');
 
+/**
+ * Ejecuta el comando ping
+ * @param {any} interaction - La interacción de Discord
+ * @returns {Promise<void>}
+ */
 async function execute(interaction: any) {
   // If we already deferred, edit the deferred reply; otherwise send a normal reply
   const respond =

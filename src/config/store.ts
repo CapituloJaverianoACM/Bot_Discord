@@ -112,6 +112,12 @@ export function getGuildConfig(guildId: string): GuildConfig | undefined {
   return cache.guilds[guildId];
 }
 
+/**
+ * Crea o actualiza la configuración de un servidor
+ * Persiste automáticamente los cambios en S3
+ * @param {GuildConfig} config - Configuración a guardar
+ * @returns {void}
+ */
 export function upsertGuildConfig(config: GuildConfig) {
   cache.guilds[config.guildId] = config;
   void saveToBucket();

@@ -45,6 +45,12 @@ export function pendingOtp(guildId: string, userId: string): OtpEntry | undefine
   return store.get(guildId)?.get(userId);
 }
 
+/**
+ * Elimina un OTP pendiente del almacén
+ * @param {string} guildId - ID del servidor
+ * @param {string} userId - ID del usuario
+ * @returns {void}
+ */
 export function clearOtp(guildId: string, userId: string) {
   const guildStore = store.get(guildId);
   if (!guildStore) return;

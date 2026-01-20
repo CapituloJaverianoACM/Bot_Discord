@@ -1,9 +1,22 @@
+/**
+ * @file messageReactionAdd.ts
+ * @description Evento que se dispara cuando se añade una reacción a un mensaje.
+ * Gestiona la creación de tickets mediante la reacción 🎫 en el mensaje configurado.
+ * Crea una categoría privada con canales de texto y voz para cada ticket.
+ */
+
 import { buildEmbed } from '../utils/embed';
 import { getGuildConfig, upsertGuildConfig } from '../config/store';
 
+/** Flag de Discord para respuestas efímeras */
 const EPHEMERAL_FLAG = 1 << 6; // Discord API flag
 
-// Ticket creation via reaction on the configured ticket trigger channel/message
+/**
+ * Manejador del evento messageReactionAdd para creación de tickets
+ * @property {string} name - Nombre del evento
+ * @property {boolean} once - Si el evento debe ejecutarse solo una vez
+ * @property {Function} execute - Función a ejecutar cuando se añade una reacción
+ */
 export default {
   name: 'messageReactionAdd',
   once: false,

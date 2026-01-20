@@ -1,3 +1,15 @@
+/**
+ * @file messageCreate.ts
+ * @description Evento que se dispara cuando se crea un mensaje en cualquier canal.
+ * Registra mensajes en la consola y proporciona un comando de fallback !ping.
+ */
+
+/**
+ * Manejador del evento messageCreate
+ * @property {string} name - Nombre del evento
+ * @property {boolean} once - Si el evento debe ejecutarse solo una vez
+ * @property {Function} execute - Función a ejecutar cuando se crea un mensaje
+ */
 export default {
   name: 'messageCreate',
   once: false,

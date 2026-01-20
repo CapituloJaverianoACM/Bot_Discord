@@ -1,7 +1,16 @@
+/**
+ * @file setup.ts
+ * @description Comando para configurar roles y canales esenciales del bot en el servidor.
+ * Establece roles de admin, junta, verificado y evento, así como canales para
+ * bienvenida, tickets, anuncios, y sistema de voz.
+ * Solo accesible para administradores.
+ */
+
 import { SlashCommandBuilder, PermissionsBitField } from 'discord.js';
 import { upsertGuildConfig } from '../config/store';
 import { buildEmbed } from '../utils/embed';
 
+/** Definición del comando /setup con todas las opciones de configuración */
 const data = new SlashCommandBuilder()
   .setName('setup')
   .setDescription('Configura canales y roles del bot')
@@ -39,6 +48,11 @@ const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
+/**
+ * Ejecuta el comando setup para configurar el servidor
+ * @param {any} interaction - La interacción de Discord
+ * @returns {Promise<void>}
+ */
 async function execute(interaction: any) {
   if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator)) {
     return interaction.reply({ content: 'Solo admins/junta pueden usar setup', ephemeral: true });

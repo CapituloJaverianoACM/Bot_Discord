@@ -1,13 +1,26 @@
+/**
+ * @file ticket-close.ts
+ * @description Comando para cerrar el ticket actual y eliminar todos sus canales asociados.
+ * Solo accesible para miembros de la junta con permiso de Manage Channels.
+ */
+
 import { SlashCommandBuilder, PermissionsBitField } from 'discord.js';
 import { buildEmbed } from '../utils/embed';
 import { getGuildConfig, upsertGuildConfig } from '../config/store';
 
+/** Flag de Discord para respuestas efímeras */
 const EPHEMERAL_FLAG = 1 << 6;
 
+/** Definición del comando /ticketclose */
 const data = new SlashCommandBuilder()
   .setName('ticketclose')
   .setDescription('Cierra el ticket actual (solo junta)');
 
+/**
+ * Ejecuta el comando ticketclose para cerrar y eliminar un ticket
+ * @param {any} interaction - La interacción de Discord
+ * @returns {Promise<void>}
+ */
 async function execute(interaction: any) {
   // Require MANAGE_CHANNELS or equivalent (JUNTA). Adjust to your role check if needed.
   if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageChannels)) {

@@ -1,7 +1,14 @@
+/**
+ * @file announce.ts
+ * @description Comando para publicar anuncios en el canal de anuncios configurado.
+ * Solo accesible para administradores. Permite personalizar título, color y mencionar roles.
+ */
+
 import { SlashCommandBuilder, PermissionsBitField, ColorResolvable } from 'discord.js';
 import { getGuildConfig } from '../config/store';
 import { buildEmbed, parseHexColor } from '../utils/embed';
 
+/** Definición del comando /announce con sus opciones */
 const data = new SlashCommandBuilder()
   .setName('announce')
   .setDescription('Publica un anuncio en el canal de anuncios configurado')
@@ -18,6 +25,11 @@ const data = new SlashCommandBuilder()
     opt.setName('color').setDescription('Color del embed (hex, ej. #5865F2)').setRequired(false),
   );
 
+/**
+ * Ejecuta el comando announce para publicar un anuncio
+ * @param {any} interaction - La interacción de Discord
+ * @returns {Promise<void>}
+ */
 async function execute(interaction: any) {
   if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator)) {
     return interaction.reply({ content: 'Solo admin/junta.', flags: 1 << 6 });

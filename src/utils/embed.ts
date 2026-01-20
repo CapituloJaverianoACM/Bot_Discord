@@ -24,6 +24,15 @@ export function buildEmbed({
   return embed;
 }
 
+/**
+ * Parsea y valida un código de color hexadecimal
+ * @param {string} [input] - Color en formato hex (con o sin #)
+ * @returns {string | undefined} Color hex válido con # o undefined si es inválido
+ * @example
+ * parseHexColor("5865F2") // "#5865F2"
+ * parseHexColor("#FF0000") // "#FF0000"
+ * parseHexColor("invalid") // undefined
+ */
 export function parseHexColor(input?: string) {
   if (!input) return undefined;
   const hex = input.trim();
