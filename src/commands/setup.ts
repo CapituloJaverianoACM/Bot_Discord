@@ -46,6 +46,20 @@ const data = new SlashCommandBuilder()
       .setName('role_event_ping')
       .setDescription('Rol para avisos de eventos/anuncios')
       .setRequired(false),
+  )
+  .addStringOption((opt) =>
+    opt
+      .setName('channel_alerts')
+      .setDescription('Canal para alertas del sistema (opcional)')
+      .setRequired(false),
+  )
+  .addIntegerOption((opt) =>
+    opt
+      .setName('alert_threshold')
+      .setDescription('% de errores para alertar (10-50, default: 20)')
+      .setRequired(false)
+      .setMinValue(10)
+      .setMaxValue(50),
   );
 
 /**
@@ -76,7 +90,9 @@ async function execute(interaction: any) {
         interaction.options.getString('channel_vc2', true),
       ],
       voiceCategory: interaction.options.getString('category_voice', true),
+      alerts: interaction.options.getString('channel_alerts') ?? undefined,
     },
+    alertThreshold: interaction.options.getInteger('alert_threshold') ?? 20,
   };
   upsertGuildConfig(config);
   const embed = buildEmbed({
@@ -101,6 +117,16 @@ async function execute(interaction: any) {
         inline: false,
       },
       { name: 'Categoría Voz', value: `<#${config.channels.voiceCategory}>`, inline: true },
+      {
+        name: 'Canal Alertas',
+        value: config.channels.alerts ? `<#${config.channels.alerts}>` : 'No configurado',
+        inline: true,
+      },
+      {
+        name: 'Threshold Alertas',
+        value: `${config.alertThreshold}%`,
+        inline: true,
+      },
     ],
   });
   await interaction.reply({ embeds: [embed] });

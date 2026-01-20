@@ -1,5 +1,7 @@
 import { getVoiceState, setVoiceState } from '../utils/voiceMasterState';
 import { getGuildConfig } from '../config/store';
+import { logger, generateRequestId, checkErrorThreshold, getErrorMetrics } from '../utils/logger';
+import { sendAdminAlert } from '../utils/alerts';
 import {
   ChannelType,
   PermissionsBitField,
@@ -13,17 +15,93 @@ import {
 
 const EPHEMERAL_FLAG = 1 << 6; // Discord API flag for ephemeral responses
 
+// Contador de interacciones para verificar error threshold
+let interactionCount = 0;
+
 export default {
   name: 'interactionCreate',
   once: false,
   async execute(interaction: any) {
+    const requestId = generateRequestId();
+    (interaction as any).requestId = requestId;
+
     try {
       const type = interaction.type ?? 'unknown';
       const name = interaction.commandName ?? interaction?.data?.name ?? 'unknown';
-      const user = interaction.user
-        ? `${interaction.user.tag} (${interaction.user.id})`
-        : 'unknown';
-      console.log(`[interaction] type=${type} name=${name} user=${user}`);
+      const userId = interaction.user?.id;
+      const guildId = interaction.guildId;
+
+      logger.info('Interaction received', {
+        requestId,
+        type,
+        commandName: name,
+        userId,
+        guildId,
+      });
+
+      // Incrementar contador y verificar error threshold cada 10 interacciones
+      interactionCount++;
+      if (interactionCount % 10 === 0 && guildId) {
+        const config = getGuildConfig(guildId);
+        const threshold = config?.alertThreshold ?? 20;
+
+        if (checkErrorThreshold(threshold)) {
+          const metrics = getErrorMetrics();
+
+          logger.warn('Error threshold exceeded, sending alert', {
+            requestId,
+            guildId,
+            errorRate: metrics.errorRate,
+            threshold,
+            totalRequests: metrics.totalRequests,
+            totalErrors: metrics.totalErrors,
+          });
+
+          // Enviar alerta a admins
+          const topCommandsText =
+            metrics.topErrorCommands
+              .map((c, i) => `${i + 1}. ${c.command}: ${c.count} errores`)
+              .join('\n') || 'N/A';
+
+          await sendAdminAlert(interaction.client, guildId, {
+            title: 'High Error Rate Detected',
+            description: `El sistema ha detectado un alto porcentaje de errores en los últimos ${metrics.windowMinutes} minutos.`,
+            severity: 'warning',
+            fields: [
+              {
+                name: 'Error Rate',
+                value: `${metrics.errorRate.toFixed(1)}%`,
+                inline: true,
+              },
+              {
+                name: 'Threshold',
+                value: `${threshold}%`,
+                inline: true,
+              },
+              {
+                name: 'Requests',
+                value: `${metrics.totalRequests}`,
+                inline: true,
+              },
+              {
+                name: 'Errors',
+                value: `${metrics.totalErrors}`,
+                inline: true,
+              },
+              {
+                name: 'Window',
+                value: `${metrics.windowMinutes} min`,
+                inline: true,
+              },
+              {
+                name: 'Top Error Commands',
+                value: topCommandsText,
+                inline: false,
+              },
+            ],
+          });
+        }
+      }
 
       // Voice Master controls: handle select menus / modals first
       if (interaction.isStringSelectMenu?.()) {
@@ -51,7 +129,11 @@ export default {
 
       const command = interaction.client.commands.get(interaction.commandName);
       if (!command) {
-        console.warn(`[interaction] Command not found: ${interaction.commandName}`);
+        logger.warn('Command not found', {
+          requestId,
+          commandName: interaction.commandName,
+          guildId,
+        });
         return;
       }
 
@@ -64,15 +146,35 @@ export default {
       ) {
         try {
           await interaction.deferReply({ flags: EPHEMERAL_FLAG });
+          logger.debug('Interaction deferred', { requestId, commandName: name });
         } catch (deferErr) {
-          console.error('Failed to defer reply', deferErr);
+          logger.error('Failed to defer interaction', {
+            requestId,
+            commandName: name,
+            error: deferErr instanceof Error ? deferErr.message : String(deferErr),
+            errorType: deferErr instanceof Error ? deferErr.name : 'DeferError',
+          });
         }
       }
 
       try {
         await command.execute(interaction);
+        logger.info('Command executed successfully', {
+          requestId,
+          commandName: name,
+          userId,
+          guildId,
+        });
       } catch (err) {
-        console.error('Command error', err);
+        logger.error('Command execution failed', {
+          requestId,
+          commandName: name,
+          userId,
+          guildId,
+          error: err instanceof Error ? err.message : String(err),
+          errorType: err instanceof Error ? err.name : 'CommandError',
+        });
+
         const replyPayload = {
           content: 'There was an error while executing this command!',
           flags: EPHEMERAL_FLAG,
@@ -84,11 +186,20 @@ export default {
             await interaction.reply?.(replyPayload);
           }
         } catch (replyErr) {
-          console.error('Failed to send error reply', replyErr);
+          logger.error('Failed to send error reply', {
+            requestId,
+            commandName: name,
+            error: replyErr instanceof Error ? replyErr.message : String(replyErr),
+            errorType: replyErr instanceof Error ? replyErr.name : 'ReplyError',
+          });
         }
       }
     } catch (topErr) {
-      console.error('Error in interactionCreate handler', topErr);
+      logger.critical('Critical error in interactionCreate handler', {
+        requestId,
+        error: topErr instanceof Error ? topErr.message : String(topErr),
+        errorType: topErr instanceof Error ? topErr.name : 'CriticalError',
+      });
     }
   },
 };
