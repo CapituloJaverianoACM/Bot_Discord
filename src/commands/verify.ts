@@ -1,10 +1,17 @@
 import { SlashCommandBuilder, PermissionsBitField } from 'discord.js';
 import { buildEmbed } from '../utils/embed';
 import { getGuildConfig, upsertGuildConfig } from '../config/store';
-import { generateOtp, verifyOtp, pendingOtp } from '../utils/otp';
+import { generateOtp, verifyOtp, pendingOtp, clearOtp } from '../utils/otp';
 import { sendOtpEmail } from '../utils/mailer';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function maskEmail(email: string) {
+  const [local, domain] = email.split('@');
+  if (!domain) return email;
+  const visible = local.slice(0, 2);
+  return `${visible}${local.length > 2 ? '***' : ''}@${domain}`;
+}
 
 const data = new SlashCommandBuilder()
   .setName('verify')
@@ -65,21 +72,36 @@ async function execute(interaction: any) {
       });
     }
 
+    try {
+      await interaction.deferReply({ ephemeral: true });
+    } catch (deferErr) {
+      console.error('No se pudo deferir la respuesta de /verify start', deferErr);
+      return interaction.reply({
+        content: 'No pude preparar la verificación, intenta nuevamente en unos segundos.',
+        flags: 1 << 6,
+      });
+    }
+
     const code = generateOtp(guildId, member.id, email);
+    const startedAt = Date.now();
     try {
       await sendOtpEmail(email, code);
+      console.info(
+        `[verify] OTP enviado a ${maskEmail(email)} para ${member.id} en ${Date.now() - startedAt}ms`,
+      );
     } catch (err) {
+      clearOtp(guildId, member.id);
       console.error('Error enviando OTP', err);
-      return interaction.reply({
-        content: 'No se pudo enviar el correo. Revisa la configuración SMTP.',
-        flags: 1 << 6,
+      const reason = err instanceof Error ? err.message : 'No se pudo enviar el correo.';
+      return interaction.editReply({
+        content: `No se pudo enviar el correo. ${reason}`,
       });
     }
     const embed = buildEmbed({
       title: 'Verificación iniciada',
       description: `Enviamos un código a ${email}. Usa /verify code <OTP>.`,
     });
-    return interaction.reply({ embeds: [embed], flags: 1 << 6 });
+    return interaction.editReply({ embeds: [embed] });
   }
 
   if (sub === 'code') {
