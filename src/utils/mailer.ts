@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import SMTPTransport from 'nodemailer/lib/smtp-transport';
+import type { TransportOptions as NodemailerTransportOptions } from 'nodemailer';
 
 interface SmtpConfig {
   host: string;
@@ -95,9 +95,29 @@ function describeSmtpError(err: unknown) {
   };
 }
 
+type MailTransportOptions = NodemailerTransportOptions & {
+  host: string;
+  port: number;
+  secure: boolean;
+  auth: {
+    user: string;
+    pass: string;
+  };
+  pool: boolean;
+  maxConnections: number;
+  maxMessages: number;
+  connectionTimeout: number;
+  socketTimeout: number;
+  greetingTimeout: number;
+  requireTLS: boolean;
+  tls: {
+    rejectUnauthorized: boolean;
+  };
+};
+
 export async function sendOtpEmail(to: string, code: string) {
   const cfg = getConfig();
-  const transporter = nodemailer.createTransport<SMTPTransport.Options>({
+  const transportOptions: MailTransportOptions = {
     host: cfg.host,
     port: cfg.port,
     secure: cfg.secure,
@@ -115,7 +135,8 @@ export async function sendOtpEmail(to: string, code: string) {
     tls: {
       rejectUnauthorized: cfg.rejectUnauthorized,
     },
-  });
+  };
+  const transporter = nodemailer.createTransport(transportOptions);
 
   const text = `Tu código de verificación es: ${code}`;
   const subject = 'Código de verificación';
