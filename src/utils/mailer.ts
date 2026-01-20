@@ -1,6 +1,8 @@
 import nodemailer from 'nodemailer';
 import type { TransportOptions as NodemailerTransportOptions } from 'nodemailer';
 import { setTimeout as sleep } from 'timers/promises';
+import { logger } from './logger';
+import { retryWithBackoff, isTemporaryError } from './retry';
 
 interface SmtpConfig {
   host: string;
@@ -68,7 +70,7 @@ function getHttpConfig(): HttpMailConfig | null {
   const from = process.env.SMTP_FROM;
   if (!apiKey || !from) return null;
   const apiUrl = process.env.SMTP_API_URL || 'https://api.smtp2go.com/v3/email/send';
-  const timeoutMs = Number(process.env.SMTP_API_TIMEOUT_MS || 10000);
+  const timeoutMs = Number(process.env.SMTP_API_TIMEOUT_MS || 30000);
   return { apiKey, apiUrl, from, timeoutMs };
 }
 
@@ -132,10 +134,10 @@ type MailTransportOptions = NodemailerTransportOptions & {
   };
 };
 
-export async function sendOtpEmail(to: string, code: string) {
+export async function sendOtpEmail(to: string, code: string, requestId?: string) {
   const httpCfg = getHttpConfig();
   if (httpCfg) {
-    return sendViaHttpApi(httpCfg, to, code);
+    return sendViaHttpApi(httpCfg, to, code, requestId);
   }
 
   const cfg = getConfig();
@@ -192,47 +194,115 @@ export async function sendOtpEmail(to: string, code: string) {
  * @param {HttpMailConfig} cfg - Configuración HTTP
  * @param {string} to - Dirección de correo del destinatario
  * @param {string} code - Código OTP a enviar
+ * @param {string} [requestId] - Request ID para logging
  * @returns {Promise<any>} Respuesta de la API
  * @throws {Error} Si falla el envío
  */
-async function sendViaHttpApi(cfg: HttpMailConfig, to: string, code: string) {
-  const startedAt = Date.now();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), cfg.timeoutMs);
-  const payload = {
-    api_key: cfg.apiKey,
-    to: [to],
-    sender: cfg.from,
-    subject: 'Código de verificación',
-    text_body: `Tu código de verificación es: ${code}`,
+async function sendViaHttpApi(cfg: HttpMailConfig, to: string, code: string, requestId?: string) {
+  const overallStartTime = Date.now();
+
+  logger.info('Sending OTP email via HTTP API', {
+    requestId,
+    to: maskEmail(to),
+    method: 'HTTP',
+    apiUrl: cfg.apiUrl,
+    timeoutMs: cfg.timeoutMs,
+  });
+
+  // Función de envío individual
+  const sendAttempt = async () => {
+    const attemptStartTime = Date.now();
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), cfg.timeoutMs);
+
+    const payload = {
+      api_key: cfg.apiKey,
+      to: [to],
+      sender: cfg.from,
+      subject: 'Código de verificación',
+      text_body: `Tu código de verificación es: ${code}`,
+    };
+
+    try {
+      const res = await fetch(cfg.apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`API email error ${res.status}: ${body?.slice(0, 200)}`);
+      }
+
+      const data = (await res.json()) as { data?: { message_id?: string; succeeded?: number } };
+      const attemptDuration = Date.now() - attemptStartTime;
+
+      logger.info('OTP email sent successfully', {
+        requestId,
+        to: maskEmail(to),
+        duration: attemptDuration,
+        messageId: data?.data?.message_id ?? 'n/a',
+      });
+
+      return data;
+    } catch (error) {
+      const attemptDuration = Date.now() - attemptStartTime;
+
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        const timeoutError = new Error('No se pudo enviar el correo (timeout API).');
+        (timeoutError as any).name = 'AbortError';
+        (timeoutError as any).duration = attemptDuration;
+        throw timeoutError;
+      }
+
+      logger.warn('Email send attempt failed', {
+        requestId,
+        to: maskEmail(to),
+        duration: attemptDuration,
+        error: error instanceof Error ? error.message : String(error),
+        errorType: error instanceof Error ? error.name : 'UnknownError',
+      });
+
+      throw error;
+    } finally {
+      clearTimeout(timer as any);
+      await sleep(0); // yield event loop
+    }
   };
+
+  // Enviar con retry logic
   try {
-    const res = await fetch(cfg.apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
+    const result = await retryWithBackoff(sendAttempt, {
+      maxAttempts: 3,
+      delays: [2000, 4000, 8000],
+      shouldRetry: isTemporaryError,
+      onRetry: (attempt, error) => {
+        logger.warn('Retrying email send', {
+          requestId,
+          attempt,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      },
     });
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`API email error ${res.status}: ${body?.slice(0, 200)}`);
-    }
-    const data = (await res.json()) as { data?: { message_id?: string; succeeded?: number } };
-    console.info(
-      `[mailer] OTP sent via HTTPS API to ${maskEmail(to)} in ${Date.now() - startedAt}ms (id=${data?.data?.message_id ?? 'n/a'})`,
-    );
-    return data;
+
+    const totalDuration = Date.now() - overallStartTime;
+    logger.info('Email send completed successfully', {
+      requestId,
+      totalDuration,
+    });
+
+    return result;
   } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new Error('No se pudo enviar el correo (timeout API).');
-    }
-    console.error(
-      `[mailer] HTTPS email send failed to ${maskEmail(to)} after ${Date.now() - startedAt}ms`,
-      error,
-    );
+    const totalDuration = Date.now() - overallStartTime;
+    logger.error('Email send failed after all retries', {
+      requestId,
+      to: maskEmail(to),
+      totalDuration,
+      error: error instanceof Error ? error.message : String(error),
+      errorType: error instanceof Error ? error.name : 'EmailSendError',
+    });
     throw error;
-  } finally {
-    clearTimeout(timer as any);
-    await sleep(0); // yield event loop
   }
 }

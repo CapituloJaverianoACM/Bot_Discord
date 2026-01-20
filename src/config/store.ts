@@ -1,5 +1,6 @@
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { Readable } from 'node:stream';
+import { logger } from '../utils/logger';
 
 export interface GuildConfig {
   guildId: string;
@@ -16,10 +17,12 @@ export interface GuildConfig {
     vcPool?: string[];
     voiceCategory?: string;
     announcements?: string;
+    alerts?: string;
   };
   ticketMessageId?: string;
   openTickets?: Record<string, { categoryId: string; textId?: string; voiceId?: string }>; // key: userId
   verificationEmails?: Record<string, string>; // email -> userId
+  alertThreshold?: number; // Porcentaje de errores (0-100) que dispara alertas automáticas
 }
 
 interface ConfigFile {
@@ -61,24 +64,35 @@ async function streamToString(body: any): Promise<string> {
 
 async function loadFromBucket(): Promise<ConfigFile | null> {
   if (!s3 || !bucket) return null;
+  const startTime = Date.now();
   try {
     const res = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
     const text = await streamToString(res.Body);
     const parsed = JSON.parse(text) as ConfigFile;
-    console.info(`[config] loaded from bucket ${bucket}/${key}`);
+    const duration = Date.now() - startTime;
+    logger.info(`Config loaded from S3 bucket`, { bucket, key, duration });
     return parsed;
   } catch (err: any) {
+    const duration = Date.now() - startTime;
     if (err?.$metadata?.httpStatusCode === 404) {
-      console.warn(`[config] no existing config in bucket ${bucket}/${key}, starting fresh`);
+      logger.warn(`No existing config in bucket, starting fresh`, { bucket, key, duration });
       return { guilds: {} };
     }
-    console.error('[config] failed to load from bucket', err);
+    logger.error('Failed to load config from S3', {
+      bucket,
+      key,
+      duration,
+      error: err.message ?? String(err),
+      errorType: err.name ?? 'S3Error',
+      httpStatus: err.$metadata?.httpStatusCode,
+    });
     return null;
   }
 }
 
 async function saveToBucket(): Promise<void> {
   if (!s3 || !bucket) return;
+  const startTime = Date.now();
   try {
     const body = JSON.stringify(cache, null, 2);
     await s3.send(
@@ -89,15 +103,24 @@ async function saveToBucket(): Promise<void> {
         ContentType: 'application/json',
       }),
     );
-    console.info(`[config] saved to bucket ${bucket}/${key}`);
-  } catch (err) {
-    console.error('[config] failed to save to bucket', err);
+    const duration = Date.now() - startTime;
+    logger.info('Config saved to S3 bucket', { bucket, key, duration });
+  } catch (err: any) {
+    const duration = Date.now() - startTime;
+    logger.error('Failed to save config to S3', {
+      bucket,
+      key,
+      duration,
+      error: err.message ?? String(err),
+      errorType: err.name ?? 'S3Error',
+      httpStatus: err.$metadata?.httpStatusCode,
+    });
   }
 }
 
 const configReady = (async () => {
   if (!s3 || !bucket) {
-    console.warn('[config] AWS_S3_BUCKET_NAME not set; using in-memory config only');
+    logger.warn('AWS_S3_BUCKET_NAME not set; using in-memory config only');
     return;
   }
   const loaded = await loadFromBucket();
@@ -116,9 +139,11 @@ export function getGuildConfig(guildId: string): GuildConfig | undefined {
  * Crea o actualiza la configuración de un servidor
  * Persiste automáticamente los cambios en S3
  * @param {GuildConfig} config - Configuración a guardar
+ * @param {string} [requestId] - Request ID para logging
  * @returns {void}
  */
-export function upsertGuildConfig(config: GuildConfig) {
+export function upsertGuildConfig(config: GuildConfig, requestId?: string) {
   cache.guilds[config.guildId] = config;
+  logger.info('Guild config updated', { guildId: config.guildId, requestId });
   void saveToBucket();
 }
