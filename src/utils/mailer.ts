@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import type { TransportOptions as NodemailerTransportOptions } from 'nodemailer';
+import { setTimeout as sleep } from 'timers/promises';
 
 interface SmtpConfig {
   host: string;
@@ -16,6 +17,13 @@ interface SmtpConfig {
   maxMessages: number;
   requireTLS: boolean;
   rejectUnauthorized: boolean;
+}
+
+interface HttpMailConfig {
+  apiKey: string;
+  apiUrl: string;
+  from: string;
+  timeoutMs: number;
 }
 
 function getConfig(): SmtpConfig {
@@ -53,6 +61,15 @@ function getConfig(): SmtpConfig {
     requireTLS: bool(process.env.SMTP_REQUIRE_TLS, false),
     rejectUnauthorized: bool(process.env.SMTP_TLS_REJECT_UNAUTHORIZED, true),
   };
+}
+
+function getHttpConfig(): HttpMailConfig | null {
+  const apiKey = process.env.SMTP_API_KEY;
+  const from = process.env.SMTP_FROM;
+  if (!apiKey || !from) return null;
+  const apiUrl = process.env.SMTP_API_URL || 'https://api.smtp2go.com/v3/email/send';
+  const timeoutMs = Number(process.env.SMTP_API_TIMEOUT_MS || 10000);
+  return { apiKey, apiUrl, from, timeoutMs };
 }
 
 function maskEmail(email: string) {
@@ -116,6 +133,11 @@ type MailTransportOptions = NodemailerTransportOptions & {
 };
 
 export async function sendOtpEmail(to: string, code: string) {
+  const httpCfg = getHttpConfig();
+  if (httpCfg) {
+    return sendViaHttpApi(httpCfg, to, code);
+  }
+
   const cfg = getConfig();
   const transportOptions: MailTransportOptions = {
     host: cfg.host,
@@ -162,5 +184,47 @@ export async function sendOtpEmail(to: string, code: string) {
     const wrapped = new Error(userMessage);
     (wrapped as any).cause = error;
     throw wrapped;
+  }
+}
+
+async function sendViaHttpApi(cfg: HttpMailConfig, to: string, code: string) {
+  const startedAt = Date.now();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), cfg.timeoutMs);
+  const payload = {
+    api_key: cfg.apiKey,
+    to: [to],
+    sender: cfg.from,
+    subject: 'Código de verificación',
+    text_body: `Tu código de verificación es: ${code}`,
+  };
+  try {
+    const res = await fetch(cfg.apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`API email error ${res.status}: ${body?.slice(0, 200)}`);
+    }
+    const data = (await res.json()) as { data?: { message_id?: string; succeeded?: number } };
+    console.info(
+      `[mailer] OTP sent via HTTPS API to ${maskEmail(to)} in ${Date.now() - startedAt}ms (id=${data?.data?.message_id ?? 'n/a'})`,
+    );
+    return data;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('No se pudo enviar el correo (timeout API).');
+    }
+    console.error(
+      `[mailer] HTTPS email send failed to ${maskEmail(to)} after ${Date.now() - startedAt}ms`,
+      error,
+    );
+    throw error;
+  } finally {
+    clearTimeout(timer as any);
+    await sleep(0); // yield event loop
   }
 }
