@@ -44,3 +44,12 @@ export function verifyOtp(
 export function pendingOtp(guildId: string, userId: string): OtpEntry | undefined {
   return store.get(guildId)?.get(userId);
 }
+
+export function clearOtp(guildId: string, userId: string) {
+  const guildStore = store.get(guildId);
+  if (!guildStore) return;
+  guildStore.delete(userId);
+  if (!guildStore.size) {
+    store.delete(guildId);
+  }
+}
