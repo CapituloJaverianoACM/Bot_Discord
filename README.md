@@ -2,11 +2,12 @@
 
 # 🤖 ACM Bot - Discord
 
-### Bot de Discord multipropósito con TypeScript y Bun
+### Bot de Discord multipropósito con TypeScript, Bun y Railway
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![Bun](https://img.shields.io/badge/Bun-Runtime-black?logo=bun)](https://bun.sh/)
 [![Discord.js](https://img.shields.io/badge/Discord.js-14.25-5865F2?logo=discord)](https://discord.js.org/)
+[![Railway](https://img.shields.io/badge/Railway-Volume-blueviolet?logo=railway)](https://railway.app/)
 [![License](https://img.shields.io/badge/License-Private-red)]()
 
 </div>
@@ -37,6 +38,8 @@
 - Validación de correos electrónicos
 - Prevención de reutilización de correos
 - Soporte SMTP y HTTP API
+- **Retry logic inteligente** (3 intentos automáticos)
+- **Rate limiting** (30s cooldown)
 
 🎤 **Voice Master**
 - Canales de voz temporales personalizables
@@ -48,6 +51,19 @@
 - Embeds personalizables con colores
 - Notificaciones a roles específicos
 - Canal dedicado para anuncios
+
+📊 **Monitoreo y Métricas** ⭐ NUEVO
+- Sistema de logging profesional con request IDs
+- Métricas en tiempo real (error rate, latencia)
+- **Alertas automáticas** al canal de admins
+- Comando `/metrics` para visualización
+- Tracking de errores por comando y tipo
+
+💾 **Persistencia con Railway Volume** ⭐ NUEVO
+- Almacenamiento en volumen local (latencia ~2ms)
+- Sin dependencias externas (antes AWS S3)
+- Configuración automática en Railway
+- Backup y restauración sencillos
 
 📅 **Gestión de Eventos**
 - Creación de eventos programados
@@ -123,24 +139,24 @@ GUILD_ID_TEST=id_servidor_pruebas
 GUILD_ID_PROD=id_servidor_produccion
 
 # SMTP (para verificación de email)
-SMTP_HOST=smtp.ejemplo.com
-SMTP_PORT=587
-SMTP_USER=tu_usuario
-SMTP_PASS=tu_contraseña
+SMTP_API_KEY=tu_smtp_api_key
+SMTP_API_URL=https://api.smtp2go.com/v3/email/send
 SMTP_FROM=noreply@ejemplo.com
+SMTP_API_TIMEOUT_MS=30000
 
-# AWS S3 (opcional, para persistencia)
-AWS_S3_BUCKET_NAME=nombre_del_bucket
-AWS_ACCESS_KEY_ID=tu_access_key
-AWS_SECRET_ACCESS_KEY=tu_secret_key
-AWS_DEFAULT_REGION=us-east-1
+# Railway Volume (auto-configurado en Railway, usa ./data en local)
+RAILWAY_VOLUME_MOUNT_PATH=/data
 ```
+
+> **💡 Para Railway:** Solo necesitas crear un Volume en Settings → Volumes con mount path `/data`. Railway configura la variable automáticamente.
+>
+> **💡 Para desarrollo local:** El bot crea automáticamente la carpeta `./data` en el directorio del proyecto.
 
 ### Configuración Inicial del Servidor
 
 1. **Ejecutar el comando de setup**
 ```
-/setup
+/setup role_admin:@Admin role_junta:@Junta role_verify:@Verified ...
 ```
 
 2. **Configurar los siguientes elementos:**
@@ -162,8 +178,17 @@ AWS_DEFAULT_REGION=us-east-1
 | Comando | Descripción | Permisos |
 |---------|-------------|----------|
 | `/setup` | Configura roles y canales del bot | Administrador |
+| `/config-reset confirmacion:CONFIRMAR` | ⚠️ Elimina toda la configuración | Guild Owner |
 | `/presence set\|clear` | Configura la presencia del bot | Administrador |
 | `/clear [valor] [unidad]` | Elimina mensajes (por cantidad o tiempo) | Manage Messages |
+
+### 📊 Monitoreo ⭐ NUEVO
+
+| Comando | Descripción | Permisos |
+|---------|-------------|----------|
+| `/metrics` | Muestra métricas en tiempo real | Admin/Junta |
+
+**Métricas mostradas:** Error rate (🔴🟡🟢), requests/errors, uptime, rate limits, top errores
 
 ### 📢 Comunicación
 
@@ -183,14 +208,10 @@ AWS_DEFAULT_REGION=us-east-1
 
 | Comando | Descripción | Permisos |
 |---------|-------------|----------|
-| `/verify start [email]` | Inicia verificación por email | Usuario |
+| `/verify start [email]` | Inicia verificación (cooldown 30s) | Usuario |
 | `/verify code [otp]` | Completa la verificación | Usuario |
 
-### 🛠️ Utilidades
-
-| Comando | Descripción | Permisos |
-|---------|-------------|----------|
-| `/ping` | Verifica la latencia del bot | Usuario |
+**Mejoras:** Retry automático (3x), rate limiting, OTP 10min, logging completo
 
 ---
 
