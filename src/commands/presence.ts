@@ -12,7 +12,7 @@ import { getGuildConfig } from '../config/store';
 /** Definición del comando /presence con subcomandos set y clear */
 const data = new SlashCommandBuilder()
   .setName('presence')
-  .setDescription('Configura el rich presence del bot')
+  .setDescription('👤 Configura presencia del bot')
   .addSubcommand((sub) =>
     sub
       .setName('set')

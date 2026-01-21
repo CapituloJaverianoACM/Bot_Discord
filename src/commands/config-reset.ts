@@ -12,7 +12,7 @@ import { logger, generateRequestId } from '../utils/logger';
 
 const data = new SlashCommandBuilder()
   .setName('config-reset')
-  .setDescription('⚠️ ELIMINA toda la configuración del servidor (solo Guild Owner)')
+  .setDescription('⚠️ Elimina toda la configuración del servidor')
   .addStringOption((opt) =>
     opt
       .setName('confirmacion')
