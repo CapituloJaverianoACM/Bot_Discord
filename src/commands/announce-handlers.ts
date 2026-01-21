@@ -28,192 +28,9 @@ const PRESET_COLORS = [
 ];
 
 /**
- * Handler para el modal del announce
+ * Construye los componentes (dropdowns y botones) para el anuncio
  */
-export async function handleAnnounceModal(interaction: any) {
-  const [, modalType, userId] = interaction.customId.split(':');
-  const sessionKey = `${interaction.guildId}-${userId}`;
-  const session = announceSessions.get(sessionKey);
-
-  if (!session || interaction.user.id !== userId) {
-    return interaction.reply({
-      content: '❌ Esta sesión no es tuya o ha expirado. Ejecuta `/announce` nuevamente.',
-      flags: 1 << 6,
-    });
-  }
-
-  // Modal de contenido principal
-  if (modalType === 'modal') {
-    const title = interaction.fields.getTextInputValue('title') || undefined;
-    const message = interaction.fields.getTextInputValue('message');
-
-    session.announcement.title = title;
-    session.announcement.message = message;
-
-    logger.info('Announce modal submitted', {
-      requestId: session.requestId,
-      userId,
-      guildId: interaction.guildId,
-      hasTitle: !!title,
-      messageLength: message.length,
-    });
-
-    await showAnnouncementOptions(interaction, session);
-  }
-  // Modal de imagen
-  else if (modalType === 'imageModal') {
-    const imageUrl = interaction.fields.getTextInputValue('imageUrl') || undefined;
-
-    // Validar URL si se proporcionó
-    if (imageUrl) {
-      try {
-        new URL(imageUrl);
-        session.announcement.image = imageUrl;
-
-        logger.info('Announce image updated', {
-          requestId: session.requestId,
-          userId,
-          hasImage: !!imageUrl,
-          imageUrl,
-        });
-      } catch {
-        return interaction.reply({
-          content:
-            '❌ URL de imagen inválida. Debe ser una URL completa (ej: https://ejemplo.com/imagen.png)',
-          flags: 1 << 6,
-        });
-      }
-    } else {
-      // Si está vacío, remover la imagen
-      session.announcement.image = undefined;
-      logger.info('Announce image removed', {
-        requestId: session.requestId,
-        userId,
-      });
-    }
-
-    // Responder al modal primero
-    await interaction.reply({
-      content: imageUrl ? '✅ Imagen configurada. Revisa el preview.' : '✅ Imagen removida.',
-      flags: 1 << 6,
-    });
-
-    // Actualizar el mensaje original del preview usando el mensaje guardado
-    try {
-      if (session.previewMessage) {
-        const embed = createAnnouncementPreview(session);
-        const cfg = getGuildConfig(session.guildId);
-
-        // Reconstruir los componentes (necesarios para que Discord re-renderice el embed)
-        const rows = [];
-
-        // Dropdown de colores
-        const colorMenu = new StringSelectMenuBuilder()
-          .setCustomId(`announce:color:${session.userId}`)
-          .setPlaceholder('🎨 Selecciona un color')
-          .addOptions(
-            PRESET_COLORS.map((color) =>
-              new StringSelectMenuOptionBuilder()
-                .setLabel(color.name)
-                .setValue(color.value)
-                .setDefault(session.announcement.color === color.value),
-            ),
-          );
-        rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(colorMenu));
-
-        // Dropdown de roles
-        const notificationRoles = [];
-        const seenRoleIds = new Set<string>();
-
-        if (cfg?.roles.laLiga && !seenRoleIds.has(cfg.roles.laLiga)) {
-          notificationRoles.push({ label: '⚽ La Liga', value: cfg.roles.laLiga });
-          seenRoleIds.add(cfg.roles.laLiga);
-        }
-        if (cfg?.roles.preParciales && !seenRoleIds.has(cfg.roles.preParciales)) {
-          notificationRoles.push({ label: '📚 Pre-Parciales', value: cfg.roles.preParciales });
-          seenRoleIds.add(cfg.roles.preParciales);
-        }
-        if (cfg?.roles.cursos && !seenRoleIds.has(cfg.roles.cursos)) {
-          notificationRoles.push({ label: '📖 Cursos', value: cfg.roles.cursos });
-          seenRoleIds.add(cfg.roles.cursos);
-        }
-        if (
-          cfg?.roles.notificacionesGenerales &&
-          !seenRoleIds.has(cfg.roles.notificacionesGenerales)
-        ) {
-          notificationRoles.push({
-            label: '🔔 Notificaciones Generales',
-            value: cfg.roles.notificacionesGenerales,
-          });
-          seenRoleIds.add(cfg.roles.notificacionesGenerales);
-        }
-
-        if (notificationRoles.length > 0) {
-          const rolesMenu = new StringSelectMenuBuilder()
-            .setCustomId(`announce:roles:${session.userId}`)
-            .setPlaceholder('🔔 Selecciona roles a mencionar (opcional)')
-            .setMinValues(0)
-            .setMaxValues(notificationRoles.length)
-            .addOptions(
-              notificationRoles.map((role) =>
-                new StringSelectMenuOptionBuilder()
-                  .setLabel(role.label)
-                  .setValue(role.value)
-                  .setDefault(session.announcement.roles?.includes(role.value) || false),
-              ),
-            );
-          rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(rolesMenu));
-        }
-
-        // Botones
-        const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder()
-            .setCustomId(`announce:edit:${session.userId}`)
-            .setLabel('✏️ Editar Texto')
-            .setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder()
-            .setCustomId(`announce:image:${session.userId}`)
-            .setLabel('🖼️ Imagen')
-            .setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder()
-            .setCustomId(`announce:publish:${session.userId}`)
-            .setLabel('📢 Publicar')
-            .setStyle(ButtonStyle.Success),
-          new ButtonBuilder()
-            .setCustomId(`announce:cancel:${session.userId}`)
-            .setLabel('❌ Cancelar')
-            .setStyle(ButtonStyle.Danger),
-        );
-        rows.push(actionRow);
-
-        // Actualizar el mensaje con embed y componentes
-        await session.previewMessage.edit({ embeds: [embed], components: rows });
-
-        logger.info('Preview updated with image', {
-          requestId: session.requestId,
-          hasImage: !!imageUrl,
-        });
-      } else {
-        logger.warn('No preview message found to update', {
-          requestId: session.requestId,
-        });
-      }
-    } catch (err) {
-      logger.error('Failed to update preview after image change', {
-        error: err instanceof Error ? err.message : String(err),
-        requestId: session.requestId,
-      });
-    }
-  }
-}
-
-/**
- * Muestra las opciones de configuración del anuncio
- */
-async function showAnnouncementOptions(interaction: any, session: any) {
-  const embed = createAnnouncementPreview(session);
-  const cfg = getGuildConfig(session.guildId);
-
+function buildAnnouncementComponents(session: any, cfg: any) {
   const rows = [];
 
   // Dropdown de colores
@@ -293,15 +110,146 @@ async function showAnnouncementOptions(interaction: any, session: any) {
   );
   rows.push(actionRow);
 
-  const reply = await interaction.reply({
+  return rows;
+}
+
+/**
+ * Handler para el modal del announce
+ */
+export async function handleAnnounceModal(interaction: any) {
+  const [, modalType, userId] = interaction.customId.split(':');
+  const sessionKey = `${interaction.guildId}-${userId}`;
+  const session = announceSessions.get(sessionKey);
+
+  if (!session || interaction.user.id !== userId) {
+    return interaction.reply({
+      content: '❌ Esta sesión no es tuya o ha expirado. Ejecuta `/announce` nuevamente.',
+      flags: 1 << 6,
+    });
+  }
+
+  // Modal de contenido principal
+  if (modalType === 'modal') {
+    const title = interaction.fields.getTextInputValue('title') || undefined;
+    const message = interaction.fields.getTextInputValue('message');
+
+    session.announcement.title = title;
+    session.announcement.message = message;
+
+    logger.info('Announce modal submitted', {
+      requestId: session.requestId,
+      userId,
+      guildId: interaction.guildId,
+      hasTitle: !!title,
+      messageLength: message.length,
+    });
+
+    await showAnnouncementOptions(interaction, session);
+  }
+  // Modal de imagen
+  else if (modalType === 'imageModal') {
+    const imageUrl = interaction.fields.getTextInputValue('imageUrl') || undefined;
+
+    // Validar URL si se proporcionó
+    if (imageUrl) {
+      try {
+        new URL(imageUrl);
+        session.announcement.image = imageUrl;
+
+        logger.info('Announce image updated', {
+          requestId: session.requestId,
+          userId,
+          hasImage: !!imageUrl,
+          imageUrl,
+        });
+      } catch {
+        return interaction.reply({
+          content:
+            '❌ URL de imagen inválida. Debe ser una URL completa (ej: https://ejemplo.com/imagen.png)',
+          flags: 1 << 6,
+        });
+      }
+    } else {
+      // Si está vacío, remover la imagen
+      session.announcement.image = undefined;
+      logger.info('Announce image removed', {
+        requestId: session.requestId,
+        userId,
+      });
+    }
+
+    // Responder al modal primero
+    await interaction.reply({
+      content: imageUrl ? '✅ Imagen configurada. Revisa el preview.' : '✅ Imagen removida.',
+      flags: 1 << 6,
+    });
+
+    // Actualizar el mensaje original del preview usando interaction del mensaje original
+    try {
+      logger.info('Attempting to update preview via webhook', {
+        requestId: session.requestId,
+        hasOriginalInteraction: !!session.originalInteraction,
+        imageUrl,
+      });
+
+      if (session.originalInteraction) {
+        const embed = createAnnouncementPreview(session);
+        const cfg = getGuildConfig(session.guildId);
+
+        // Usar la función auxiliar para construir los componentes
+        const rows = buildAnnouncementComponents(session, cfg);
+
+        logger.info('About to edit preview via editReply', {
+          requestId: session.requestId,
+          embedHasImage: !!session.announcement.image,
+          embedImage: session.announcement.image,
+        });
+
+        // Usar editReply en la interacción original (funciona con efímeros)
+        await session.originalInteraction.editReply({ embeds: [embed], components: rows });
+
+        logger.info('Preview updated successfully with image', {
+          requestId: session.requestId,
+          hasImage: !!imageUrl,
+        });
+      } else {
+        logger.warn('No original interaction found to update', {
+          requestId: session.requestId,
+        });
+      }
+    } catch (err) {
+      logger.error('Failed to update preview after image change', {
+        error: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+        requestId: session.requestId,
+      });
+    }
+  }
+}
+
+/**
+ * Muestra las opciones de configuración del anuncio
+ */
+async function showAnnouncementOptions(interaction: any, session: any) {
+  const embed = createAnnouncementPreview(session);
+  const cfg = getGuildConfig(session.guildId);
+
+  // Usar la función auxiliar para construir los componentes
+  const rows = buildAnnouncementComponents(session, cfg);
+
+  await interaction.reply({
     embeds: [embed],
     components: rows,
     flags: 1 << 6,
-    fetchReply: true, // Obtener el mensaje para poder editarlo después
   });
 
-  // Guardar el mensaje para poder actualizarlo después
-  session.previewMessage = reply;
+  // Guardar la interacción original para poder usar editReply después
+  session.originalInteraction = interaction;
+
+  logger.info('Preview message created and saved', {
+    requestId: session.requestId,
+    hasInteraction: !!interaction,
+  });
 }
 
 /**
