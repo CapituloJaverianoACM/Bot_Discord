@@ -67,11 +67,11 @@ export function createAnnouncementPreview(session: any) {
     },
   ];
 
-  // Agregar indicador de imagen si existe (la imagen se mostrará visualmente abajo)
+  // Agregar indicador de imagen si existe
   if (image) {
     fields.push({
       name: '🖼️ Imagen',
-      value: '✅ Configurada (ver abajo)',
+      value: '✅ Configurada',
       inline: false,
     });
   }

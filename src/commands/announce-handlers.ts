@@ -102,7 +102,93 @@ export async function handleAnnounceModal(interaction: any) {
     try {
       if (session.previewMessage) {
         const embed = createAnnouncementPreview(session);
-        await session.previewMessage.edit({ embeds: [embed] });
+        const cfg = getGuildConfig(session.guildId);
+
+        // Reconstruir los componentes (necesarios para que Discord re-renderice el embed)
+        const rows = [];
+
+        // Dropdown de colores
+        const colorMenu = new StringSelectMenuBuilder()
+          .setCustomId(`announce:color:${session.userId}`)
+          .setPlaceholder('🎨 Selecciona un color')
+          .addOptions(
+            PRESET_COLORS.map((color) =>
+              new StringSelectMenuOptionBuilder()
+                .setLabel(color.name)
+                .setValue(color.value)
+                .setDefault(session.announcement.color === color.value),
+            ),
+          );
+        rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(colorMenu));
+
+        // Dropdown de roles
+        const notificationRoles = [];
+        const seenRoleIds = new Set<string>();
+
+        if (cfg?.roles.laLiga && !seenRoleIds.has(cfg.roles.laLiga)) {
+          notificationRoles.push({ label: '⚽ La Liga', value: cfg.roles.laLiga });
+          seenRoleIds.add(cfg.roles.laLiga);
+        }
+        if (cfg?.roles.preParciales && !seenRoleIds.has(cfg.roles.preParciales)) {
+          notificationRoles.push({ label: '📚 Pre-Parciales', value: cfg.roles.preParciales });
+          seenRoleIds.add(cfg.roles.preParciales);
+        }
+        if (cfg?.roles.cursos && !seenRoleIds.has(cfg.roles.cursos)) {
+          notificationRoles.push({ label: '📖 Cursos', value: cfg.roles.cursos });
+          seenRoleIds.add(cfg.roles.cursos);
+        }
+        if (
+          cfg?.roles.notificacionesGenerales &&
+          !seenRoleIds.has(cfg.roles.notificacionesGenerales)
+        ) {
+          notificationRoles.push({
+            label: '🔔 Notificaciones Generales',
+            value: cfg.roles.notificacionesGenerales,
+          });
+          seenRoleIds.add(cfg.roles.notificacionesGenerales);
+        }
+
+        if (notificationRoles.length > 0) {
+          const rolesMenu = new StringSelectMenuBuilder()
+            .setCustomId(`announce:roles:${session.userId}`)
+            .setPlaceholder('🔔 Selecciona roles a mencionar (opcional)')
+            .setMinValues(0)
+            .setMaxValues(notificationRoles.length)
+            .addOptions(
+              notificationRoles.map((role) =>
+                new StringSelectMenuOptionBuilder()
+                  .setLabel(role.label)
+                  .setValue(role.value)
+                  .setDefault(session.announcement.roles?.includes(role.value) || false),
+              ),
+            );
+          rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(rolesMenu));
+        }
+
+        // Botones
+        const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`announce:edit:${session.userId}`)
+            .setLabel('✏️ Editar Texto')
+            .setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder()
+            .setCustomId(`announce:image:${session.userId}`)
+            .setLabel('🖼️ Imagen')
+            .setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder()
+            .setCustomId(`announce:publish:${session.userId}`)
+            .setLabel('📢 Publicar')
+            .setStyle(ButtonStyle.Success),
+          new ButtonBuilder()
+            .setCustomId(`announce:cancel:${session.userId}`)
+            .setLabel('❌ Cancelar')
+            .setStyle(ButtonStyle.Danger),
+        );
+        rows.push(actionRow);
+
+        // Actualizar el mensaje con embed y componentes
+        await session.previewMessage.edit({ embeds: [embed], components: rows });
+
         logger.info('Preview updated with image', {
           requestId: session.requestId,
           hasImage: !!imageUrl,
