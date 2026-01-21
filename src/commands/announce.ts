@@ -76,38 +76,28 @@ async function execute(interaction: any) {
 
   // Verificar permisos
   if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator)) {
-    if (interaction.deferred) {
-      return interaction.editReply({
-        content: '❌ Solo administradores pueden crear anuncios.',
-      });
-    } else {
-      return interaction.reply({
-        content: '❌ Solo administradores pueden crear anuncios.',
-        flags: 1 << 6,
-      });
-    }
+    return interaction.reply({
+      content: '❌ Solo administradores pueden crear anuncios.',
+      flags: 1 << 6,
+    });
   }
 
   // Verificar que existe canal de anuncios configurado
   const cfg = getGuildConfig(guildId);
   if (!cfg?.channels.announcements) {
-    const content = '❌ Canal de anuncios no configurado. Usa `/setup` primero.';
-    if (interaction.deferred) {
-      return interaction.editReply({ content });
-    } else {
-      return interaction.reply({ content, flags: 1 << 6 });
-    }
+    return interaction.reply({
+      content: '❌ Canal de anuncios no configurado. Usa `/setup` primero.',
+      flags: 1 << 6,
+    });
   }
 
   // Verificar que el canal existe
   const channel = interaction.guild.channels.cache.get(cfg.channels.announcements);
   if (!channel || !channel.isTextBased?.()) {
-    const content = '❌ El canal de anuncios configurado no es válido.';
-    if (interaction.deferred) {
-      return interaction.editReply({ content });
-    } else {
-      return interaction.reply({ content, flags: 1 << 6 });
-    }
+    return interaction.reply({
+      content: '❌ El canal de anuncios configurado no es válido.',
+      flags: 1 << 6,
+    });
   }
 
   // Crear sesión
@@ -168,4 +158,4 @@ async function execute(interaction: any) {
   await interaction.showModal(modal);
 }
 
-export default { data, execute, defer: true };
+export default { data, execute };

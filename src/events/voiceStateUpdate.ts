@@ -87,11 +87,17 @@ export default {
         // Post control embed in the voice channel chat itself (no extra text channel)
         const embed = {
           title: 'VC Controls',
-          description: `Creador: <@${newState.member.id}>\nStatus: -\nUsa los menús para configurar tu canal. Sólo el creador o junta/admin pueden cambiarlo.`,
+          description:
+            'Status: -\nUsa los menús para configurar tu canal. Sólo el creador o junta/admin pueden cambiarlo.',
         };
         const rows = buildControls(target.id);
         try {
-          const controlMsg = await (target as any).send?.({ embeds: [embed], components: rows });
+          // Enviar el ping del creador como mensaje separado antes del embed
+          const controlMsg = await (target as any).send?.({
+            content: `Creador: <@${newState.member.id}>`,
+            embeds: [embed],
+            components: rows,
+          });
           if (controlMsg) {
             setVoiceState(target.id, {
               ownerId: newState.member.id,
