@@ -89,7 +89,7 @@ async function execute(interaction: any) {
   if (!cfg?.channels.announcements) {
     return interaction.reply({ content: 'Configura canal de anuncios en /setup.', flags: 1 << 6 });
   }
-  const pingRole = cfg.roles.eventPing;
+  const pingRole = cfg.roles.notificacionesGenerales;
   const doPing = interaction.options.getBoolean('ping') ?? false;
 
   const sub = interaction.options.getSubcommand();

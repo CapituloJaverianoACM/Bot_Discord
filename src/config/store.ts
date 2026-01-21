@@ -9,7 +9,11 @@ export interface GuildConfig {
     junta?: string;
     verify?: string;
     verifyJaveriana?: string;
-    eventPing?: string;
+    // Roles de notificaciones
+    laLiga?: string;
+    preParciales?: string;
+    cursos?: string;
+    notificacionesGenerales?: string;
   };
   channels: {
     welcome?: string;
