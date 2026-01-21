@@ -135,7 +135,7 @@ async function execute(interaction: any) {
     guildId,
     requestId,
     channelId: cfg.channels.announcements,
-    previewMessage: undefined, // Se guardará el mensaje del preview para actualizarlo
+    originalInteraction: undefined, // Se guardará la interacción original para usar editReply
     announcement: {
       title: undefined,
       message: undefined,

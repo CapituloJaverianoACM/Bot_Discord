@@ -184,37 +184,36 @@ export async function handleAnnounceModal(interaction: any) {
       flags: 1 << 6,
     });
 
-    // Actualizar el mensaje original del preview usando el mensaje guardado
+    // Actualizar el mensaje original del preview usando interaction del mensaje original
     try {
-      logger.info('Attempting to update preview', {
+      logger.info('Attempting to update preview via webhook', {
         requestId: session.requestId,
-        hasPreviewMessage: !!session.previewMessage,
-        previewMessageId: session.previewMessage?.id,
+        hasOriginalInteraction: !!session.originalInteraction,
         imageUrl,
       });
 
-      if (session.previewMessage) {
+      if (session.originalInteraction) {
         const embed = createAnnouncementPreview(session);
         const cfg = getGuildConfig(session.guildId);
 
         // Usar la función auxiliar para construir los componentes
         const rows = buildAnnouncementComponents(session, cfg);
 
-        logger.info('About to edit preview message', {
+        logger.info('About to edit preview via editReply', {
           requestId: session.requestId,
           embedHasImage: !!session.announcement.image,
           embedImage: session.announcement.image,
         });
 
-        // Actualizar el mensaje con embed y componentes
-        await session.previewMessage.edit({ embeds: [embed], components: rows });
+        // Usar editReply en la interacción original (funciona con efímeros)
+        await session.originalInteraction.editReply({ embeds: [embed], components: rows });
 
         logger.info('Preview updated successfully with image', {
           requestId: session.requestId,
           hasImage: !!imageUrl,
         });
       } else {
-        logger.warn('No preview message found to update', {
+        logger.warn('No original interaction found to update', {
           requestId: session.requestId,
         });
       }
@@ -238,20 +237,18 @@ async function showAnnouncementOptions(interaction: any, session: any) {
   // Usar la función auxiliar para construir los componentes
   const rows = buildAnnouncementComponents(session, cfg);
 
-  const reply = await interaction.reply({
+  await interaction.reply({
     embeds: [embed],
     components: rows,
     flags: 1 << 6,
-    fetchReply: true, // Obtener el mensaje para poder editarlo después
   });
 
-  // Guardar el mensaje para poder actualizarlo después
-  session.previewMessage = reply;
+  // Guardar la interacción original para poder usar editReply después
+  session.originalInteraction = interaction;
 
   logger.info('Preview message created and saved', {
     requestId: session.requestId,
-    messageId: reply?.id,
-    hasMessage: !!reply,
+    hasInteraction: !!interaction,
   });
 }
 
