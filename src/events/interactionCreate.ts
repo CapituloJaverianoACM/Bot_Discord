@@ -132,6 +132,18 @@ export default {
         return;
       }
 
+      // Help interactivo: handle select menus and buttons
+      if (interaction.isStringSelectMenu?.() && interaction.customId?.startsWith('help:')) {
+        const { handleHelpSelect } = await import('../commands/help-handlers');
+        await handleHelpSelect(interaction);
+        return;
+      }
+      if (interaction.isButton?.() && interaction.customId?.startsWith('help:')) {
+        const { handleHelpBack } = await import('../commands/help-handlers');
+        await handleHelpBack(interaction);
+        return;
+      }
+
       // Voice Master controls: handle select menus / modals first
       if (interaction.isStringSelectMenu?.()) {
         const cid = interaction.customId as string;
