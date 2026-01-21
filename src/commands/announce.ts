@@ -117,6 +117,7 @@ async function execute(interaction: any) {
     guildId,
     requestId,
     channelId: cfg.channels.announcements,
+    messageId: undefined, // Se guardará cuando se muestre el preview
     announcement: {
       title: undefined,
       message: undefined,

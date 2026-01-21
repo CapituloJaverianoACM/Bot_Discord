@@ -87,9 +87,33 @@ export async function handleAnnounceModal(interaction: any) {
       session.announcement.image = undefined;
     }
 
-    // Actualizar preview
-    const embed = createAnnouncementPreview(session);
-    await interaction.update({ embeds: [embed] });
+    // Responder al modal primero
+    await interaction.reply({
+      content: imageUrl ? '✅ Imagen configurada' : '✅ Imagen removida',
+      flags: 1 << 6,
+    });
+
+    // Actualizar el mensaje original del preview
+    try {
+      const originalMessage = await interaction.message?.fetch?.();
+      if (!originalMessage && session.messageId) {
+        // Si no hay mensaje adjunto, buscar por ID
+        const channel = await interaction.client.channels.fetch(interaction.channelId);
+        if (channel?.isTextBased?.()) {
+          const msg = await channel.messages.fetch(session.messageId);
+          const embed = createAnnouncementPreview(session);
+          await msg.edit({ embeds: [embed] });
+        }
+      } else if (originalMessage) {
+        const embed = createAnnouncementPreview(session);
+        await originalMessage.edit({ embeds: [embed] });
+      }
+    } catch (err) {
+      logger.error('Failed to update preview after image change', {
+        error: err instanceof Error ? err.message : String(err),
+        requestId: session.requestId,
+      });
+    }
   }
 }
 
@@ -179,7 +203,12 @@ async function showAnnouncementOptions(interaction: any, session: any) {
   );
   rows.push(actionRow);
 
-  await interaction.reply({ embeds: [embed], components: rows, flags: 1 << 6 });
+  const reply = await interaction.reply({ embeds: [embed], components: rows, flags: 1 << 6 });
+
+  // Guardar el messageId para poder actualizarlo después
+  if (reply && typeof reply.id === 'string') {
+    session.messageId = reply.id;
+  }
 }
 
 /**

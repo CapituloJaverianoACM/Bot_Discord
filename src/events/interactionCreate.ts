@@ -104,7 +104,7 @@ export default {
       }
 
       // Announce interactivo: handle modals, buttons and select menus
-      if (interaction.isModalSubmit?.() && interaction.customId?.startsWith('announce:modal:')) {
+      if (interaction.isModalSubmit?.() && interaction.customId?.startsWith('announce:')) {
         const { handleAnnounceModal } = await import('../commands/announce-handlers');
         await handleAnnounceModal(interaction);
         return;
