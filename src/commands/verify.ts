@@ -110,6 +110,7 @@ async function execute(interaction: any) {
     // Prevent the same email being verified by more than 2 different users
     const verifiedMap = cfg.verificationEmails || {};
     const existingUserForEmail = verifiedMap[email];
+
     if (existingUserForEmail && existingUserForEmail !== member.id) {
       logger.warn('Email already used by another user', {
         requestId,
@@ -122,6 +123,54 @@ async function execute(interaction: any) {
         content: 'Este correo ya fue usado por otro usuario. No se puede reutilizar.',
         flags: 1 << 6,
       });
+    }
+
+    // Verificar si el usuario intenta re-verificarse con el mismo correo
+    if (existingUserForEmail === member.id) {
+      const isNewEmailJaveriana = email.endsWith('@javeriana.edu.co');
+
+      // Verificar si el usuario ya tiene un correo Javeriano registrado
+      const userHasJaverianaEmail = Object.entries(verifiedMap).some(
+        ([verifiedEmail, userId]) =>
+          userId === member.id && verifiedEmail.endsWith('@javeriana.edu.co'),
+      );
+
+      if (userHasJaverianaEmail) {
+        // Ya tiene verificación Javeriana, no permitir cambio
+        logger.warn('User already has Javeriana verification', {
+          requestId,
+          userId: member.id,
+          guildId,
+          attemptedEmail: maskEmail(email),
+        });
+        return interaction.reply({
+          content: 'Ya tienes verificación con correo Javeriano.',
+          flags: 1 << 6,
+        });
+      }
+
+      if (isNewEmailJaveriana && !userHasJaverianaEmail) {
+        // Permitir upgrade de verify normal → verifyJaveriana
+        logger.info('User attempting upgrade to Javeriana verification', {
+          requestId,
+          userId: member.id,
+          guildId,
+          newEmail: maskEmail(email),
+        });
+        // Continuar con el proceso de verificación (upgrade se manejará al confirmar OTP)
+      } else {
+        // Ya está verificado con este correo
+        logger.info('User already verified with this email', {
+          requestId,
+          userId: member.id,
+          guildId,
+          email: maskEmail(email),
+        });
+        return interaction.reply({
+          content: 'Ya estás verificado con este correo.',
+          flags: 1 << 6,
+        });
+      }
     }
 
     const code = generateOtp(guildId, member.id, email);
@@ -275,13 +324,32 @@ async function execute(interaction: any) {
     }
 
     try {
+      // Detectar si es un upgrade de verify → verifyJaveriana
+      const isUpgrade = isJaveriana && member.roles.cache.has(cfg.roles.verify!);
+
+      if (isUpgrade) {
+        // Remover rol verify normal antes de asignar verifyJaveriana
+        await member.roles.remove(cfg.roles.verify!);
+        logger.info('Removed normal verify role for upgrade', {
+          requestId,
+          userId: member.id,
+          guildId,
+          removedRoleId: cfg.roles.verify,
+        });
+      }
+
+      // Asignar el nuevo rol
       await member.roles.add(roleId);
-      logger.info('Verify role assigned successfully', {
-        requestId,
-        userId: member.id,
-        guildId,
-        roleId,
-      });
+      logger.info(
+        isUpgrade ? 'User upgraded to Javeriana verification' : 'Verify role assigned successfully',
+        {
+          requestId,
+          userId: member.id,
+          guildId,
+          roleId,
+          isUpgrade,
+        },
+      );
     } catch (err) {
       logger.error('Failed to assign verify role', {
         requestId,
@@ -306,6 +374,27 @@ async function execute(interaction: any) {
 
     // Persist email as verified for this user
     const verifiedMap = cfg.verificationEmails || {};
+
+    // Si es upgrade, eliminar el correo anterior del mapa
+    if (isJaveriana && member.roles.cache.has(cfg.roles.verifyJaveriana!)) {
+      // Encontrar y eliminar el correo anterior (no Javeriano)
+      const oldEmail = Object.entries(verifiedMap).find(
+        ([verifiedEmail, userId]) =>
+          userId === member.id && !verifiedEmail.endsWith('@javeriana.edu.co'),
+      );
+
+      if (oldEmail) {
+        delete verifiedMap[oldEmail[0]];
+        logger.info('Removed old email from verification map during upgrade', {
+          requestId,
+          userId: member.id,
+          guildId,
+          oldEmail: maskEmail(oldEmail[0]),
+        });
+      }
+    }
+
+    // Agregar el nuevo correo al mapa
     verifiedMap[result.email!.toLowerCase()] = member.id;
     upsertGuildConfig({ ...cfg, guildId, verificationEmails: verifiedMap }, requestId);
 
