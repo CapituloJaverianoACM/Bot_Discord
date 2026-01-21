@@ -312,20 +312,22 @@ Este documento resume la documentación agregada a todo el proyecto del Bot de D
 - ✅ Ejemplo de flujo: User → /verify start → Rate limit check → Generate OTP → Send email (retry 3x) → Log success
 
 ### 📄 `src/config/store.ts`
-**Sistema de almacenamiento**
-- ✅ Descripción completa del sistema
+**Sistema de almacenamiento con Railway Volume**
+- ✅ Descripción completa del sistema de persistencia en filesystem local
 - ✅ JSDoc para interface `GuildConfig`
 - ✅ Nuevo campo `channels.alerts` - ID del canal de alertas administrativas
 - ✅ Nuevo campo `alertThreshold` - Porcentaje de error rate (0-100) para alertas automáticas
 - ✅ JSDoc para interface `ConfigFile`
-- ✅ Documentación de variables de AWS S3
-- ✅ JSDoc para función `streamToString()`
-- ✅ JSDoc actualizado para función `loadFromBucket()` - Incluye logging con métricas de latencia
-- ✅ JSDoc actualizado para función `saveToBucket()` - Incluye logging con métricas de latencia
+- ✅ Documentación de variable de entorno `RAILWAY_VOLUME_MOUNT_PATH` (default: ./data)
+- ✅ JSDoc para función `ensureVolumeDirectory()` - Crea directorio del volumen si no existe
+- ✅ JSDoc actualizado para función `loadFromFile()` - Carga desde filesystem con métricas de latencia
+- ✅ JSDoc actualizado para función `saveToFile()` - Guarda a filesystem con métricas de latencia y tamaño
 - ✅ JSDoc para función `getGuildConfig()`
 - ✅ JSDoc actualizado para función `upsertGuildConfig(config, requestId?)` - Acepta requestId opcional
-- ✅ Explicación del sistema de caché
-- ✅ Logging de operaciones S3 con códigos HTTP y duración
+- ✅ JSDoc para función `deleteGuildConfig(guildId, requestId?)` - Elimina configuración de guild
+- ✅ Explicación del sistema de caché en memoria
+- ✅ Logging de operaciones de filesystem con duración y tamaño de archivo
+- ✅ Sin dependencias externas (AWS SDK removido)
 
 ---
 
