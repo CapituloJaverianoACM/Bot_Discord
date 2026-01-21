@@ -1,13 +1,16 @@
 /**
  * @file ping.ts
- * @description Comando simple para verificar la latencia del bot.
- * Responde con "Pong!" y muestra el tiempo de ida y vuelta.
+ * @description Comando simple para verificar la latencia del bot usando WebSocket ping.
+ * Responde con "Pong!" y muestra la latencia real del WebSocket.
  */
 
 import { SlashCommandBuilder } from 'discord.js';
+import { scheduleAutoDelete } from '../utils/autoDelete';
 
 /** Definición del comando /ping */
-const data = new SlashCommandBuilder().setName('ping').setDescription('Replies with Pong!');
+const data = new SlashCommandBuilder()
+  .setName('ping')
+  .setDescription('🏓 Verifica latencia del bot');
 
 /**
  * Ejecuta el comando ping
@@ -15,17 +18,15 @@ const data = new SlashCommandBuilder().setName('ping').setDescription('Replies w
  * @returns {Promise<void>}
  */
 async function execute(interaction: any) {
-  // If we already deferred, edit the deferred reply; otherwise send a normal reply
-  const respond =
-    interaction.deferred || interaction.replied
-      ? interaction.editReply.bind(interaction)
-      : interaction.reply.bind(interaction);
+  // Responder con la latencia del WebSocket
+  const wsPing = interaction.client.ws.ping;
+  const reply = await interaction.reply({
+    content: `🏓 Pong! | WebSocket: ${wsPing}ms`,
+    fetchReply: true,
+  });
 
-  const sent = await respond({ content: 'Pong!' });
-  // sent is the Message when replying; after editReply, fetch it explicitly if not returned
-  const message = sent ?? (await interaction.fetchReply());
-  const time = message.createdTimestamp - interaction.createdTimestamp;
-  await interaction.editReply(`Pong! Roundtrip time: ${time}ms`);
+  // Programar auto-eliminación después de 60 segundos
+  scheduleAutoDelete(reply, 60);
 }
 
 export default { data, execute };
