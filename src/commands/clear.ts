@@ -83,11 +83,11 @@ async function execute(interaction: any) {
     });
     const botMessage = await interaction.reply({ embeds: [embed] });
 
-    // Auto-delete the bot message after 5 new messages in the channel
+    // Auto-delete híbrido: 60s O 5 mensajes nuevos (lo que ocurra primero)
     const collector = channel.createMessageCollector({
       filter: (m: any) => !m.author.bot,
       max: 5,
-      time: 30 * 60 * 1000,
+      time: 60000, // 60 segundos
     });
     collector.on('end', async () => {
       try {
