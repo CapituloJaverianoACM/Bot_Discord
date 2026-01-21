@@ -6,6 +6,7 @@ interface EmbedOptions {
   color?: ColorResolvable;
   fields?: APIEmbedField[];
   footer?: string;
+  image?: string;
 }
 
 export function buildEmbed({
@@ -14,6 +15,7 @@ export function buildEmbed({
   color = '#5865F2',
   fields,
   footer,
+  image,
 }: EmbedOptions) {
   const embed = new EmbedBuilder();
   if (title) embed.setTitle(title);
@@ -21,6 +23,7 @@ export function buildEmbed({
   if (color) embed.setColor(color);
   if (fields && fields.length) embed.addFields(fields);
   if (footer) embed.setFooter({ text: footer });
+  if (image) embed.setImage(image);
   return embed;
 }
 
