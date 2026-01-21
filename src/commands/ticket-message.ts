@@ -4,7 +4,7 @@ import { getGuildConfig, upsertGuildConfig } from '../config/store';
 
 const data = new SlashCommandBuilder()
   .setName('ticketmessage')
-  .setDescription('Publica el mensaje de tickets (solo junta/admin)')
+  .setDescription('🎫 Publica mensaje para crear tickets')
   .addStringOption((opt) =>
     opt.setName('description').setDescription('Descripción del ticket').setRequired(false),
   );

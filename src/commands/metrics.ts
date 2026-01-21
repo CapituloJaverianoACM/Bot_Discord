@@ -13,7 +13,7 @@ import { getRateLimitSize } from '../utils/rateLimit';
 
 const data = new SlashCommandBuilder()
   .setName('metrics')
-  .setDescription('Muestra métricas y estadísticas del bot');
+  .setDescription('📊 Muestra estadísticas en tiempo real');
 
 /**
  * Formatea duración en ms a string legible
