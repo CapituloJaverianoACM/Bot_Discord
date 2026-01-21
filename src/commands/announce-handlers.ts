@@ -118,20 +118,27 @@ async function showAnnouncementOptions(interaction: any, session: any) {
 
   // Dropdown de roles a mencionar (si existen roles de notificaciones configurados)
   const notificationRoles = [];
-  if (cfg?.roles.laLiga) {
+  const seenRoleIds = new Set<string>();
+
+  // Agregar roles solo si no están duplicados
+  if (cfg?.roles.laLiga && !seenRoleIds.has(cfg.roles.laLiga)) {
     notificationRoles.push({ label: '⚽ La Liga', value: cfg.roles.laLiga });
+    seenRoleIds.add(cfg.roles.laLiga);
   }
-  if (cfg?.roles.preParciales) {
+  if (cfg?.roles.preParciales && !seenRoleIds.has(cfg.roles.preParciales)) {
     notificationRoles.push({ label: '📚 Pre-Parciales', value: cfg.roles.preParciales });
+    seenRoleIds.add(cfg.roles.preParciales);
   }
-  if (cfg?.roles.cursos) {
+  if (cfg?.roles.cursos && !seenRoleIds.has(cfg.roles.cursos)) {
     notificationRoles.push({ label: '📖 Cursos', value: cfg.roles.cursos });
+    seenRoleIds.add(cfg.roles.cursos);
   }
-  if (cfg?.roles.notificacionesGenerales) {
+  if (cfg?.roles.notificacionesGenerales && !seenRoleIds.has(cfg.roles.notificacionesGenerales)) {
     notificationRoles.push({
       label: '🔔 Notificaciones Generales',
       value: cfg.roles.notificacionesGenerales,
     });
+    seenRoleIds.add(cfg.roles.notificacionesGenerales);
   }
 
   if (notificationRoles.length > 0) {
