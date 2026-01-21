@@ -1,0 +1,357 @@
+/**
+ * @file announce-handlers.ts
+ * @description Handlers para el sistema de announce interactivo.
+ * Maneja modales, botones y menús desplegables del proceso de creación de anuncios.
+ */
+
+import {
+  ActionRowBuilder,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} from 'discord.js';
+import { getGuildConfig } from '../config/store';
+import { logger } from '../utils/logger';
+import { buildEmbed } from '../utils/embed';
+import { announceSessions, createAnnouncementPreview } from './announce';
+
+const PRESET_COLORS = [
+  { name: '🔴 Rojo (Importante)', value: '#EF4444' },
+  { name: '🟡 Amarillo (Advertencia)', value: '#F59E0B' },
+  { name: '🟢 Verde (Éxito)', value: '#10B981' },
+  { name: '🔵 Azul (Información)', value: '#3B82F6' },
+  { name: '🟣 Morado (Evento)', value: '#8B5CF6' },
+  { name: '🟠 Naranja (Alerta)', value: '#F97316' },
+  { name: '⚫ Negro (Formal)', value: '#1F2937' },
+  { name: '⚪ Blanco Discord', value: '#5865F2' },
+];
+
+/**
+ * Handler para el modal del announce
+ */
+export async function handleAnnounceModal(interaction: any) {
+  const userId = interaction.customId.split(':')[2];
+  const sessionKey = `${interaction.guildId}-${userId}`;
+  const session = announceSessions.get(sessionKey);
+
+  if (!session || interaction.user.id !== userId) {
+    return interaction.reply({
+      content: '❌ Esta sesión no es tuya o ha expirado. Ejecuta `/announce` nuevamente.',
+      flags: 1 << 6,
+    });
+  }
+
+  // Obtener valores del modal
+  const title = interaction.fields.getTextInputValue('title') || undefined;
+  const message = interaction.fields.getTextInputValue('message');
+
+  // Actualizar sesión
+  session.announcement.title = title;
+  session.announcement.message = message;
+
+  logger.info('Announce modal submitted', {
+    requestId: session.requestId,
+    userId,
+    guildId: interaction.guildId,
+    hasTitle: !!title,
+    messageLength: message.length,
+  });
+
+  // Mostrar preview con opciones
+  await showAnnouncementOptions(interaction, session);
+}
+
+/**
+ * Muestra las opciones de configuración del anuncio
+ */
+async function showAnnouncementOptions(interaction: any, session: any) {
+  const embed = createAnnouncementPreview(session);
+  const cfg = getGuildConfig(session.guildId);
+
+  const rows = [];
+
+  // Dropdown de colores
+  const colorMenu = new StringSelectMenuBuilder()
+    .setCustomId(`announce:color:${session.userId}`)
+    .setPlaceholder('🎨 Selecciona un color')
+    .addOptions(
+      PRESET_COLORS.map((color) =>
+        new StringSelectMenuOptionBuilder()
+          .setLabel(color.name)
+          .setValue(color.value)
+          .setDefault(session.announcement.color === color.value),
+      ),
+    );
+  rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(colorMenu));
+
+  // Dropdown de roles a mencionar (si existen roles de notificaciones configurados)
+  const notificationRoles = [];
+  if (cfg?.roles.laLiga) {
+    notificationRoles.push({ label: '⚽ La Liga', value: cfg.roles.laLiga });
+  }
+  if (cfg?.roles.preParciales) {
+    notificationRoles.push({ label: '📚 Pre-Parciales', value: cfg.roles.preParciales });
+  }
+  if (cfg?.roles.cursos) {
+    notificationRoles.push({ label: '📖 Cursos', value: cfg.roles.cursos });
+  }
+  if (cfg?.roles.notificacionesGenerales) {
+    notificationRoles.push({
+      label: '🔔 Notificaciones Generales',
+      value: cfg.roles.notificacionesGenerales,
+    });
+  }
+
+  if (notificationRoles.length > 0) {
+    const rolesMenu = new StringSelectMenuBuilder()
+      .setCustomId(`announce:roles:${session.userId}`)
+      .setPlaceholder('🔔 Selecciona roles a mencionar (opcional)')
+      .setMinValues(0)
+      .setMaxValues(notificationRoles.length)
+      .addOptions(
+        notificationRoles.map((role) =>
+          new StringSelectMenuOptionBuilder()
+            .setLabel(role.label)
+            .setValue(role.value)
+            .setDefault(session.announcement.roles?.includes(role.value) || false),
+        ),
+      );
+    rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(rolesMenu));
+  }
+
+  // Botones de acción
+  const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`announce:edit:${session.userId}`)
+      .setLabel('✏️ Editar Texto')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(`announce:publish:${session.userId}`)
+      .setLabel('📢 Publicar Anuncio')
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId(`announce:cancel:${session.userId}`)
+      .setLabel('❌ Cancelar')
+      .setStyle(ButtonStyle.Danger),
+  );
+  rows.push(actionRow);
+
+  await interaction.reply({ embeds: [embed], components: rows, flags: 1 << 6 });
+}
+
+/**
+ * Handler para botones del announce
+ */
+export async function handleAnnounceButton(interaction: any) {
+  const [, action, userId] = interaction.customId.split(':');
+  const sessionKey = `${interaction.guildId}-${userId}`;
+  const session = announceSessions.get(sessionKey);
+
+  if (!session || interaction.user.id !== userId) {
+    return interaction.reply({
+      content: '❌ Esta sesión no es tuya o ha expirado. Ejecuta `/announce` nuevamente.',
+      flags: 1 << 6,
+    });
+  }
+
+  try {
+    switch (action) {
+      case 'edit':
+        await editAnnouncement(interaction, session);
+        break;
+      case 'publish':
+        await publishAnnouncement(interaction, session, sessionKey);
+        break;
+      case 'cancel':
+        await cancelAnnouncement(interaction, session, sessionKey);
+        break;
+      default:
+        await interaction.reply({
+          content: '❌ Acción desconocida.',
+          flags: 1 << 6,
+        });
+    }
+  } catch (error) {
+    logger.error('Error in announce button handler', {
+      error: error instanceof Error ? error.message : String(error),
+      action,
+      guildId: interaction.guildId,
+      userId,
+    });
+
+    const errorMsg = '❌ Error procesando la acción. Intenta nuevamente.';
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp({ content: errorMsg, flags: 1 << 6 });
+    } else {
+      await interaction.reply({ content: errorMsg, flags: 1 << 6 });
+    }
+  }
+}
+
+/**
+ * Handler para menús desplegables del announce
+ */
+export async function handleAnnounceSelect(interaction: any) {
+  const [, field, userId] = interaction.customId.split(':');
+  const sessionKey = `${interaction.guildId}-${userId}`;
+  const session = announceSessions.get(sessionKey);
+
+  if (!session || interaction.user.id !== userId) {
+    return interaction.reply({
+      content: '❌ Esta sesión no es tuya o ha expirado. Ejecuta `/announce` nuevamente.',
+      flags: 1 << 6,
+    });
+  }
+
+  // Actualizar configuración según el campo
+  if (field === 'color') {
+    session.announcement.color = interaction.values[0];
+    logger.info('Announce color updated', {
+      requestId: session.requestId,
+      color: interaction.values[0],
+      userId,
+    });
+  } else if (field === 'roles') {
+    session.announcement.roles = interaction.values;
+    logger.info('Announce roles updated', {
+      requestId: session.requestId,
+      rolesCount: interaction.values.length,
+      userId,
+    });
+  }
+
+  // Actualizar preview
+  const embed = createAnnouncementPreview(session);
+  await interaction.update({ embeds: [embed] });
+}
+
+/**
+ * Editar el anuncio (mostrar modal nuevamente)
+ */
+async function editAnnouncement(interaction: any, session: any) {
+  const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } =
+    await import('discord.js');
+
+  const modal = new ModalBuilder()
+    .setCustomId(`announce:modal:${session.userId}`)
+    .setTitle('📢 Editar Anuncio')
+    .addComponents(
+      new ActionRowBuilder<any>().addComponents(
+        new TextInputBuilder()
+          .setCustomId('title')
+          .setLabel('Título del Anuncio')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('Ej: Importante - Leer')
+          .setRequired(false)
+          .setMaxLength(256)
+          .setValue(session.announcement.title || ''),
+      ),
+      new ActionRowBuilder<any>().addComponents(
+        new TextInputBuilder()
+          .setCustomId('message')
+          .setLabel('Mensaje del Anuncio')
+          .setStyle(TextInputStyle.Paragraph)
+          .setPlaceholder('Escribe el contenido del anuncio aquí...')
+          .setRequired(true)
+          .setMaxLength(4000)
+          .setValue(session.announcement.message || ''),
+      ),
+    );
+
+  await interaction.showModal(modal);
+}
+
+/**
+ * Publicar el anuncio
+ */
+async function publishAnnouncement(interaction: any, session: any, sessionKey: string) {
+  const { announcement, channelId, guildId } = session;
+
+  // Validar que hay mensaje
+  if (!announcement.message) {
+    return interaction.reply({
+      content: '❌ No puedes publicar un anuncio sin mensaje.',
+      flags: 1 << 6,
+    });
+  }
+
+  // Obtener canal
+  const channel = interaction.guild.channels.cache.get(channelId);
+  if (!channel || !channel.isTextBased?.()) {
+    return interaction.reply({
+      content: '❌ El canal de anuncios no es válido.',
+      flags: 1 << 6,
+    });
+  }
+
+  try {
+    // Crear embed del anuncio
+    const announcementEmbed = buildEmbed({
+      title: announcement.title || 'Anuncio',
+      description: announcement.message,
+      color: announcement.color || '#5865F2',
+    });
+
+    // Publicar menciones primero si hay
+    if (announcement.roles && announcement.roles.length > 0) {
+      const mentions = announcement.roles.map((r: string) => `<@&${r}>`).join(' ');
+      await channel.send({ content: mentions });
+    }
+
+    // Publicar anuncio
+    await channel.send({ embeds: [announcementEmbed] });
+
+    logger.info('Announcement published', {
+      requestId: session.requestId,
+      userId: session.userId,
+      guildId,
+      channelId,
+      rolesCount: announcement.roles?.length || 0,
+    });
+
+    // Responder éxito
+    const successEmbed = buildEmbed({
+      title: '✅ Anuncio Publicado',
+      description: `Tu anuncio ha sido publicado exitosamente en <#${channelId}>.`,
+      color: '#10B981',
+    });
+
+    await interaction.update({ embeds: [successEmbed], components: [] });
+
+    // Limpiar sesión
+    announceSessions.delete(sessionKey);
+  } catch (error) {
+    logger.error('Failed to publish announcement', {
+      requestId: session.requestId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    await interaction.reply({
+      content: '❌ Error al publicar el anuncio. Verifica que el bot tenga permisos en el canal.',
+      flags: 1 << 6,
+    });
+  }
+}
+
+/**
+ * Cancelar el anuncio
+ */
+async function cancelAnnouncement(interaction: any, session: any, sessionKey: string) {
+  logger.info('Announcement cancelled by user', {
+    requestId: session.requestId,
+    userId: session.userId,
+    guildId: session.guildId,
+  });
+
+  const cancelEmbed = buildEmbed({
+    title: '❌ Anuncio Cancelado',
+    description: 'El anuncio ha sido cancelado. No se publicó nada.',
+    color: '#EF4444',
+  });
+
+  await interaction.update({ embeds: [cancelEmbed], components: [] });
+
+  // Limpiar sesión
+  announceSessions.delete(sessionKey);
+}

@@ -103,6 +103,23 @@ export default {
         }
       }
 
+      // Announce interactivo: handle modals, buttons and select menus
+      if (interaction.isModalSubmit?.() && interaction.customId?.startsWith('announce:modal:')) {
+        const { handleAnnounceModal } = await import('../commands/announce-handlers');
+        await handleAnnounceModal(interaction);
+        return;
+      }
+      if (interaction.isButton?.() && interaction.customId?.startsWith('announce:')) {
+        const { handleAnnounceButton } = await import('../commands/announce-handlers');
+        await handleAnnounceButton(interaction);
+        return;
+      }
+      if (interaction.isStringSelectMenu?.() && interaction.customId?.startsWith('announce:')) {
+        const { handleAnnounceSelect } = await import('../commands/announce-handlers');
+        await handleAnnounceSelect(interaction);
+        return;
+      }
+
       // Setup interactivo: handle buttons and select menus
       if (interaction.isButton?.() && interaction.customId?.startsWith('setup:')) {
         const { handleSetupButton } = await import('../commands/setup-handlers');
