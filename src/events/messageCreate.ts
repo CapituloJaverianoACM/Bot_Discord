@@ -1,7 +1,7 @@
 /**
  * @file messageCreate.ts
  * @description Evento que se dispara cuando se crea un mensaje en cualquier canal.
- * Proporciona un comando de fallback !ping para testing sin slash commands.
+1. B * Proporciona un comando de fallback !ping para testing sin slash commands.
  * Nota: Logging de mensajes deshabilitado para reducir ruido en logs.
  */
 
