@@ -103,6 +103,18 @@ export default {
         }
       }
 
+      // Setup interactivo: handle buttons and select menus
+      if (interaction.isButton?.() && interaction.customId?.startsWith('setup:')) {
+        const { handleSetupButton } = await import('../commands/setup-handlers');
+        await handleSetupButton(interaction);
+        return;
+      }
+      if (interaction.isStringSelectMenu?.() && interaction.customId?.startsWith('setup:')) {
+        const { handleSetupSelect } = await import('../commands/setup-handlers');
+        await handleSetupSelect(interaction);
+        return;
+      }
+
       // Voice Master controls: handle select menus / modals first
       if (interaction.isStringSelectMenu?.()) {
         const cid = interaction.customId as string;

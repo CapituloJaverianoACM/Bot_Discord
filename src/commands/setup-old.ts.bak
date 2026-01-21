@@ -1,0 +1,278 @@
+/**
+ * @file setup.ts
+ * @description Sistema interactivo de configuración del bot usando embeds y dropdowns.
+ * Proporciona una experiencia guiada paso a paso para configurar todos los aspectos del bot.
+ * Solo accesible para administradores.
+ */
+
+import {
+  SlashCommandBuilder,
+  PermissionsBitField,
+  ActionRowBuilder,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ComponentType,
+} from 'discord.js';
+import { upsertGuildConfig, getGuildConfig } from '../config/store';
+import { buildEmbed } from '../utils/embed';
+import { logger, generateRequestId } from '../utils/logger';
+
+// Estado temporal de la configuración en progreso
+const setupSessions = new Map<string, any>();
+
+/** Definición del comando /setup simplificado */
+const data = new SlashCommandBuilder()
+  .setName('setup')
+  .setDescription('🛠️ Configuración interactiva del bot (Sistema guiado paso a paso)');
+
+/**
+ * Crea el embed inicial del setup
+ */
+function createInitialEmbed() {
+  return buildEmbed({
+    title: '🛠️ Configuración del Bot',
+    description:
+      '¡Bienvenido al asistente de configuración interactivo!\n\n' +
+      'Te guiaré paso a paso para configurar todos los aspectos del bot.\n\n' +
+      '**Pasos:**\n' +
+      '1️⃣ Roles (Admin, Junta, Verificación)\n' +
+      '2️⃣ Canales (Bienvenida, Tickets, Anuncios)\n' +
+      '3️⃣ Sistema de Voz (VC Create, Pool)\n' +
+      '4️⃣ Opciones Avanzadas (Alertas, Threshold)\n' +
+      '5️⃣ Confirmación Final\n\n' +
+      '⏱️ Tienes 5 minutos para completar la configuración.',
+    color: '#5865F2',
+  });
+}
+
+/**
+ * Crea el embed para el paso 1: Roles
+ */
+function createRolesEmbed(session: any) {
+  const current = session.config;
+  return buildEmbed({
+    title: '1️⃣ Configuración de Roles',
+    description: 'Selecciona los roles necesarios para el funcionamiento del bot.',
+    color: '#5865F2',
+    fields: [
+      {
+        name: '👑 Admin',
+        value: current.roles.admin ? `<@&${current.roles.admin}>` : '❌ No configurado',
+        inline: true,
+      },
+      {
+        name: '🎯 Junta',
+        value: current.roles.junta ? `<@&${current.roles.junta}>` : '❌ No configurado',
+        inline: true,
+      },
+      {
+        name: '✅ Verificado (Normal)',
+        value: current.roles.verify ? `<@&${current.roles.verify}>` : '❌ No configurado',
+        inline: true,
+      },
+      {
+        name: '🎓 Verificado (Javeriana)',
+        value: current.roles.verifyJaveriana
+          ? `<@&${current.roles.verifyJaveriana}>`
+          : '❌ No configurado',
+        inline: true,
+      },
+      {
+        name: '📢 Event Ping (Opcional)',
+        value: current.roles.eventPing ? `<@&${current.roles.eventPing}>` : '⏭️ Omitir',
+        inline: true,
+      },
+    ],
+    footer: 'Usa los menús desplegables para seleccionar cada rol',
+  });
+}
+
+/**
+ * Crea el embed para el paso 2: Canales
+ */
+function createChannelsEmbed(session: any) {
+  const current = session.config;
+  return buildEmbed({
+    title: '2️⃣ Configuración de Canales',
+    description: 'Selecciona los canales principales del bot.',
+    color: '#5865F2',
+    fields: [
+      {
+        name: '👋 Bienvenida',
+        value: current.channels.welcome ? `<#${current.channels.welcome}>` : '❌ No configurado',
+        inline: true,
+      },
+      {
+        name: '🎫 Tickets',
+        value: current.channels.ticketTrigger
+          ? `<#${current.channels.ticketTrigger}>`
+          : '❌ No configurado',
+        inline: true,
+      },
+      {
+        name: '📢 Anuncios',
+        value: current.channels.announcements
+          ? `<#${current.channels.announcements}>`
+          : '❌ No configurado',
+        inline: true,
+      },
+      {
+        name: '🔔 Alertas (Opcional)',
+        value: current.channels.alerts ? `<#${current.channels.alerts}>` : '⏭️ Omitir',
+        inline: true,
+      },
+    ],
+    footer: 'Usa los menús desplegables para seleccionar cada canal',
+  });
+}
+
+/**
+ * Crea el embed para el paso 3: Sistema de Voz
+ */
+function createVoiceEmbed(session: any) {
+  const current = session.config;
+  return buildEmbed({
+    title: '3️⃣ Sistema de Voz',
+    description: 'Configura el sistema Voice Master para canales temporales.',
+    color: '#5865F2',
+    fields: [
+      {
+        name: '🎤 VC Create',
+        value: current.channels.vcCreate ? `<#${current.channels.vcCreate}>` : '❌ No configurado',
+        inline: true,
+      },
+      {
+        name: '📁 Categoría Voz',
+        value: current.channels.voiceCategory
+          ? `<#${current.channels.voiceCategory}>`
+          : '❌ No configurado',
+        inline: true,
+      },
+      {
+        name: '🔄 VC Pool',
+        value:
+          current.channels.vcPool?.length > 0
+            ? current.channels.vcPool.map((id: string) => `<#${id}>`).join(', ')
+            : '❌ No configurado',
+        inline: false,
+      },
+    ],
+    footer: 'El pool de VCs permite reciclar canales de voz existentes',
+  });
+}
+
+/**
+ * Crea el embed de confirmación final
+ */
+function createConfirmationEmbed(session: any) {
+  const cfg = session.config;
+  return buildEmbed({
+    title: '5️⃣ Confirmación Final',
+    description: '¿Todo está correcto? Revisa la configuración antes de guardar.',
+    color: '#5865F2',
+    fields: [
+      {
+        name: '👑 Roles',
+        value:
+          `Admin: ${cfg.roles.admin ? `<@&${cfg.roles.admin}>` : '❌'}\n` +
+          `Junta: ${cfg.roles.junta ? `<@&${cfg.roles.junta}>` : '❌'}\n` +
+          `Verified: ${cfg.roles.verify ? `<@&${cfg.roles.verify}>` : '❌'}\n` +
+          `Javeriana: ${cfg.roles.verifyJaveriana ? `<@&${cfg.roles.verifyJaveriana}>` : '❌'}\n` +
+          `Event Ping: ${cfg.roles.eventPing ? `<@&${cfg.roles.eventPing}>` : 'Omitido'}`,
+        inline: false,
+      },
+      {
+        name: '📝 Canales',
+        value:
+          `Bienvenida: ${cfg.channels.welcome ? `<#${cfg.channels.welcome}>` : '❌'}\n` +
+          `Tickets: ${cfg.channels.ticketTrigger ? `<#${cfg.channels.ticketTrigger}>` : '❌'}\n` +
+          `Anuncios: ${cfg.channels.announcements ? `<#${cfg.channels.announcements}>` : '❌'}\n` +
+          `Alertas: ${cfg.channels.alerts ? `<#${cfg.channels.alerts}>` : 'Omitido'}`,
+        inline: false,
+      },
+      {
+        name: '🎤 Sistema de Voz',
+        value:
+          `VC Create: ${cfg.channels.vcCreate ? `<#${cfg.channels.vcCreate}>` : '❌'}\n` +
+          `Categoría: ${cfg.channels.voiceCategory ? `<#${cfg.channels.voiceCategory}>` : '❌'}\n` +
+          `Pool: ${cfg.channels.vcPool?.length > 0 ? `${cfg.channels.vcPool.length} canales` : '❌'}`,
+        inline: false,
+      },
+      {
+        name: '⚙️ Avanzado',
+        value: `Threshold Alertas: ${cfg.alertThreshold || 20}%`,
+        inline: false,
+      },
+    ],
+    footer: '✅ Guardar configuración | ❌ Cancelar',
+  });
+}
+  const config = {
+    guildId,
+    roles: {
+      admin: interaction.options.getString('role_admin', true),
+      junta: interaction.options.getString('role_junta', true),
+      verify: interaction.options.getString('role_verify', true),
+      verifyJaveriana: interaction.options.getString('role_verify_javeriana', true),
+      eventPing: interaction.options.getString('role_event_ping') ?? undefined,
+    },
+    channels: {
+      welcome: interaction.options.getString('channel_welcome', true),
+      ticketTrigger: interaction.options.getString('channel_ticket', true),
+      announcements: interaction.options.getString('channel_announcements', true),
+      vcCreate: interaction.options.getString('channel_vc_create', true),
+      vcPool: [
+        interaction.options.getString('channel_vc1', true),
+        interaction.options.getString('channel_vc2', true),
+      ],
+      voiceCategory: interaction.options.getString('category_voice', true),
+      alerts: interaction.options.getString('channel_alerts') ?? undefined,
+    },
+    alertThreshold: interaction.options.getInteger('alert_threshold') ?? 20,
+  };
+  upsertGuildConfig(config);
+  const embed = buildEmbed({
+    title: 'Setup guardado',
+    description: 'Configuración actualizada para la guild',
+    fields: [
+      { name: 'Admin', value: `<@&${config.roles.admin}>`, inline: true },
+      { name: 'Junta', value: `<@&${config.roles.junta}>`, inline: true },
+      { name: 'Verificado (Normal)', value: `<@&${config.roles.verify}>`, inline: true },
+      {
+        name: 'Verificado (Javeriana)',
+        value: `<@&${config.roles.verifyJaveriana}>`,
+        inline: true,
+      },
+      {
+        name: 'Rol eventos',
+        value: config.roles.eventPing ? `<@&${config.roles.eventPing}>` : 'N/A',
+        inline: true,
+      },
+      { name: 'Welcome', value: `<#${config.channels.welcome}>`, inline: true },
+      { name: 'Ticket', value: `<#${config.channels.ticketTrigger}>`, inline: true },
+      { name: 'Anuncios', value: `<#${config.channels.announcements}>`, inline: true },
+      { name: 'VC Create', value: `<#${config.channels.vcCreate}>`, inline: true },
+      {
+        name: 'VC Pool',
+        value: config.channels.vcPool.map((c) => `<#${c}>`).join(', '),
+        inline: false,
+      },
+      { name: 'Categoría Voz', value: `<#${config.channels.voiceCategory}>`, inline: true },
+      {
+        name: 'Canal Alertas',
+        value: config.channels.alerts ? `<#${config.channels.alerts}>` : 'No configurado',
+        inline: true,
+      },
+      {
+        name: 'Threshold Alertas',
+        value: `${config.alertThreshold}%`,
+        inline: true,
+      },
+    ],
+  });
+  await interaction.reply({ embeds: [embed] });
+}
+
+export default { data, execute };

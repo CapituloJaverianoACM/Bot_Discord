@@ -51,7 +51,7 @@ async function execute(interaction: any) {
     | ColorResolvable
     | undefined;
   const doPing = interaction.options.getBoolean('ping') ?? false;
-  const pingRole = doPing ? cfg.roles.eventPing : undefined;
+  const pingRole = doPing ? cfg.roles.notificacionesGenerales : undefined;
 
   const embed = buildEmbed({ title, description: message, color });
   try {
