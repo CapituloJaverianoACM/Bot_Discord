@@ -74,6 +74,7 @@ export async function handleAnnounceModal(interaction: any) {
           requestId: session.requestId,
           userId,
           hasImage: !!imageUrl,
+          imageUrl,
         });
       } catch {
         return interaction.reply({
@@ -85,28 +86,31 @@ export async function handleAnnounceModal(interaction: any) {
     } else {
       // Si está vacío, remover la imagen
       session.announcement.image = undefined;
+      logger.info('Announce image removed', {
+        requestId: session.requestId,
+        userId,
+      });
     }
 
     // Responder al modal primero
     await interaction.reply({
-      content: imageUrl ? '✅ Imagen configurada' : '✅ Imagen removida',
+      content: imageUrl ? '✅ Imagen configurada. Revisa el preview.' : '✅ Imagen removida.',
       flags: 1 << 6,
     });
 
-    // Actualizar el mensaje original del preview
+    // Actualizar el mensaje original del preview usando el mensaje guardado
     try {
-      const originalMessage = await interaction.message?.fetch?.();
-      if (!originalMessage && session.messageId) {
-        // Si no hay mensaje adjunto, buscar por ID
-        const channel = await interaction.client.channels.fetch(interaction.channelId);
-        if (channel?.isTextBased?.()) {
-          const msg = await channel.messages.fetch(session.messageId);
-          const embed = createAnnouncementPreview(session);
-          await msg.edit({ embeds: [embed] });
-        }
-      } else if (originalMessage) {
+      if (session.previewMessage) {
         const embed = createAnnouncementPreview(session);
-        await originalMessage.edit({ embeds: [embed] });
+        await session.previewMessage.edit({ embeds: [embed] });
+        logger.info('Preview updated with image', {
+          requestId: session.requestId,
+          hasImage: !!imageUrl,
+        });
+      } else {
+        logger.warn('No preview message found to update', {
+          requestId: session.requestId,
+        });
       }
     } catch (err) {
       logger.error('Failed to update preview after image change', {
@@ -203,12 +207,15 @@ async function showAnnouncementOptions(interaction: any, session: any) {
   );
   rows.push(actionRow);
 
-  const reply = await interaction.reply({ embeds: [embed], components: rows, flags: 1 << 6 });
+  const reply = await interaction.reply({
+    embeds: [embed],
+    components: rows,
+    flags: 1 << 6,
+    fetchReply: true, // Obtener el mensaje para poder editarlo después
+  });
 
-  // Guardar el messageId para poder actualizarlo después
-  if (reply && typeof reply.id === 'string') {
-    session.messageId = reply.id;
-  }
+  // Guardar el mensaje para poder actualizarlo después
+  session.previewMessage = reply;
 }
 
 /**

@@ -31,6 +31,16 @@ const data = new SlashCommandBuilder()
 export function createAnnouncementPreview(session: any) {
   const { title, message, color, roles, image } = session.announcement;
 
+  // Debug logging
+  console.log('[PREVIEW DEBUG]', {
+    hasTitle: !!title,
+    hasMessage: !!message,
+    color: color || 'default',
+    rolesCount: roles?.length || 0,
+    hasImage: !!image,
+    imageUrl: image,
+  });
+
   const rolesText =
     roles && roles.length > 0 ? roles.map((r: string) => `<@&${r}>`).join(' ') : 'Ninguno';
 
@@ -66,14 +76,21 @@ export function createAnnouncementPreview(session: any) {
     });
   }
 
-  return buildEmbed({
+  const embedOptions = {
     title: '📢 Preview del Anuncio',
     description: 'Así es como se verá tu anuncio. Revisa antes de publicar.',
-    color: color || '#5865F2', // Usar el color seleccionado
+    color: color || '#5865F2',
     fields,
-    image: image, // Mostrar la imagen visualmente en el embed
+    image: image,
     footer: 'Haz clic en los botones para editar o publicar',
+  };
+
+  console.log('[EMBED OPTIONS]', {
+    hasImage: !!embedOptions.image,
+    imageValue: embedOptions.image,
   });
+
+  return buildEmbed(embedOptions);
 }
 
 /**
@@ -118,7 +135,7 @@ async function execute(interaction: any) {
     guildId,
     requestId,
     channelId: cfg.channels.announcements,
-    messageId: undefined, // Se guardará cuando se muestre el preview
+    previewMessage: undefined, // Se guardará el mensaje del preview para actualizarlo
     announcement: {
       title: undefined,
       message: undefined,
