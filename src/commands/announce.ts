@@ -29,37 +29,48 @@ const data = new SlashCommandBuilder()
  * Crea el embed de preview del anuncio
  */
 export function createAnnouncementPreview(session: any) {
-  const { title, message, color, roles } = session.announcement;
+  const { title, message, color, roles, image } = session.announcement;
 
   const rolesText =
     roles && roles.length > 0 ? roles.map((r: string) => `<@&${r}>`).join(' ') : 'Ninguno';
 
+  const fields = [
+    {
+      name: '📝 Título',
+      value: title || 'Sin título',
+      inline: false,
+    },
+    {
+      name: '💬 Mensaje',
+      value: message || 'Sin mensaje',
+      inline: false,
+    },
+    {
+      name: '🎨 Color',
+      value: color || 'Default (#5865F2)',
+      inline: true,
+    },
+    {
+      name: '🔔 Menciones',
+      value: rolesText,
+      inline: true,
+    },
+  ];
+
+  // Agregar campo de imagen si existe
+  if (image) {
+    fields.push({
+      name: '🖼️ Imagen',
+      value: image,
+      inline: false,
+    });
+  }
+
   return buildEmbed({
     title: '📢 Preview del Anuncio',
     description: 'Así es como se verá tu anuncio. Revisa antes de publicar.',
-    color: '#5865F2',
-    fields: [
-      {
-        name: '📝 Título',
-        value: title || 'Sin título',
-        inline: false,
-      },
-      {
-        name: '💬 Mensaje',
-        value: message || 'Sin mensaje',
-        inline: false,
-      },
-      {
-        name: '🎨 Color',
-        value: color || 'Default (#5865F2)',
-        inline: true,
-      },
-      {
-        name: '🔔 Menciones',
-        value: rolesText,
-        inline: true,
-      },
-    ],
+    color: color || '#5865F2', // Usar el color seleccionado
+    fields,
     footer: 'Haz clic en los botones para editar o publicar',
   });
 }
@@ -111,6 +122,7 @@ async function execute(interaction: any) {
       message: undefined,
       color: undefined,
       roles: [],
+      image: undefined,
     },
     startedAt: Date.now(),
   };

@@ -31,7 +31,7 @@ const PRESET_COLORS = [
  * Handler para el modal del announce
  */
 export async function handleAnnounceModal(interaction: any) {
-  const userId = interaction.customId.split(':')[2];
+  const [, modalType, userId] = interaction.customId.split(':');
   const sessionKey = `${interaction.guildId}-${userId}`;
   const session = announceSessions.get(sessionKey);
 
@@ -42,24 +42,55 @@ export async function handleAnnounceModal(interaction: any) {
     });
   }
 
-  // Obtener valores del modal
-  const title = interaction.fields.getTextInputValue('title') || undefined;
-  const message = interaction.fields.getTextInputValue('message');
+  // Modal de contenido principal
+  if (modalType === 'modal') {
+    const title = interaction.fields.getTextInputValue('title') || undefined;
+    const message = interaction.fields.getTextInputValue('message');
 
-  // Actualizar sesión
-  session.announcement.title = title;
-  session.announcement.message = message;
+    session.announcement.title = title;
+    session.announcement.message = message;
 
-  logger.info('Announce modal submitted', {
-    requestId: session.requestId,
-    userId,
-    guildId: interaction.guildId,
-    hasTitle: !!title,
-    messageLength: message.length,
-  });
+    logger.info('Announce modal submitted', {
+      requestId: session.requestId,
+      userId,
+      guildId: interaction.guildId,
+      hasTitle: !!title,
+      messageLength: message.length,
+    });
 
-  // Mostrar preview con opciones
-  await showAnnouncementOptions(interaction, session);
+    await showAnnouncementOptions(interaction, session);
+  }
+  // Modal de imagen
+  else if (modalType === 'imageModal') {
+    const imageUrl = interaction.fields.getTextInputValue('imageUrl') || undefined;
+
+    // Validar URL si se proporcionó
+    if (imageUrl) {
+      try {
+        new URL(imageUrl);
+        session.announcement.image = imageUrl;
+
+        logger.info('Announce image updated', {
+          requestId: session.requestId,
+          userId,
+          hasImage: !!imageUrl,
+        });
+      } catch {
+        return interaction.reply({
+          content:
+            '❌ URL de imagen inválida. Debe ser una URL completa (ej: https://ejemplo.com/imagen.png)',
+          flags: 1 << 6,
+        });
+      }
+    } else {
+      // Si está vacío, remover la imagen
+      session.announcement.image = undefined;
+    }
+
+    // Actualizar preview
+    const embed = createAnnouncementPreview(session);
+    await interaction.update({ embeds: [embed] });
+  }
 }
 
 /**
@@ -127,8 +158,12 @@ async function showAnnouncementOptions(interaction: any, session: any) {
       .setLabel('✏️ Editar Texto')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
+      .setCustomId(`announce:image:${session.userId}`)
+      .setLabel('🖼️ Imagen')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
       .setCustomId(`announce:publish:${session.userId}`)
-      .setLabel('📢 Publicar Anuncio')
+      .setLabel('📢 Publicar')
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId(`announce:cancel:${session.userId}`)
@@ -159,6 +194,9 @@ export async function handleAnnounceButton(interaction: any) {
     switch (action) {
       case 'edit':
         await editAnnouncement(interaction, session);
+        break;
+      case 'image':
+        await setAnnouncementImage(interaction, session);
         break;
       case 'publish':
         await publishAnnouncement(interaction, session, sessionKey);
@@ -263,6 +301,32 @@ async function editAnnouncement(interaction: any, session: any) {
 }
 
 /**
+ * Configurar imagen del anuncio (mostrar modal para URL)
+ */
+async function setAnnouncementImage(interaction: any, session: any) {
+  const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } =
+    await import('discord.js');
+
+  const modal = new ModalBuilder()
+    .setCustomId(`announce:imageModal:${session.userId}`)
+    .setTitle('🖼️ Imagen del Anuncio')
+    .addComponents(
+      new ActionRowBuilder<any>().addComponents(
+        new TextInputBuilder()
+          .setCustomId('imageUrl')
+          .setLabel('URL de la Imagen')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('https://ejemplo.com/imagen.png')
+          .setRequired(false)
+          .setMaxLength(500)
+          .setValue(session.announcement.image || ''),
+      ),
+    );
+
+  await interaction.showModal(modal);
+}
+
+/**
  * Publicar el anuncio
  */
 async function publishAnnouncement(interaction: any, session: any, sessionKey: string) {
@@ -291,6 +355,7 @@ async function publishAnnouncement(interaction: any, session: any, sessionKey: s
       title: announcement.title || 'Anuncio',
       description: announcement.message,
       color: announcement.color || '#5865F2',
+      image: announcement.image, // Agregar imagen si existe
     });
 
     // Publicar menciones primero si hay
