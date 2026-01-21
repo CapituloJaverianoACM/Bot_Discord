@@ -165,11 +165,14 @@ async function showRolesStep(interaction: any, session: any) {
   const embed = createRolesEmbed(session);
   const guild = interaction.guild;
 
-  // Obtener roles del servidor (máximo 25 opciones)
-  const roles = guild.roles.cache
-    .filter((r: any) => r.id !== guild.id && !r.managed) // Excluir @everyone y roles de bots
+  // Obtener roles del servidor (convertir a array correctamente)
+  const rolesArray = Array.from(
+    guild.roles.cache
+      .filter((r: any) => r.id !== guild.id && !r.managed) // Excluir @everyone y roles de bots
+      .values(),
+  )
     .sort((a: any, b: any) => b.position - a.position)
-    .first(20);
+    .slice(0, 20);
 
   // Crear menús para cada rol
   const rows = [];
@@ -179,7 +182,7 @@ async function showRolesStep(interaction: any, session: any) {
     .setCustomId(`setup:role_admin:${session.userId}`)
     .setPlaceholder('👑 Selecciona el rol Admin')
     .addOptions(
-      roles.map((r: any) =>
+      rolesArray.map((r: any) =>
         new StringSelectMenuOptionBuilder()
           .setLabel(r.name)
           .setValue(r.id)
@@ -193,7 +196,7 @@ async function showRolesStep(interaction: any, session: any) {
     .setCustomId(`setup:role_junta:${session.userId}`)
     .setPlaceholder('🎯 Selecciona el rol Junta')
     .addOptions(
-      roles.map((r: any) =>
+      rolesArray.map((r: any) =>
         new StringSelectMenuOptionBuilder()
           .setLabel(r.name)
           .setValue(r.id)
@@ -207,7 +210,7 @@ async function showRolesStep(interaction: any, session: any) {
     .setCustomId(`setup:role_verify:${session.userId}`)
     .setPlaceholder('✅ Selecciona el rol Verificado (Normal)')
     .addOptions(
-      roles.map((r: any) =>
+      rolesArray.map((r: any) =>
         new StringSelectMenuOptionBuilder()
           .setLabel(r.name)
           .setValue(r.id)
@@ -221,7 +224,7 @@ async function showRolesStep(interaction: any, session: any) {
     .setCustomId(`setup:role_verifyJaveriana:${session.userId}`)
     .setPlaceholder('🎓 Selecciona el rol Verificado (Javeriana)')
     .addOptions(
-      roles.map((r: any) =>
+      rolesArray.map((r: any) =>
         new StringSelectMenuOptionBuilder()
           .setLabel(r.name)
           .setValue(r.id)
@@ -253,11 +256,12 @@ async function showNotificationRolesStep(interaction: any, session: any) {
   const embed = createNotificationRolesEmbed(session);
   const guild = interaction.guild;
 
-  // Obtener roles del servidor
-  const roles = guild.roles.cache
-    .filter((r: any) => r.id !== guild.id && !r.managed)
+  // Obtener roles del servidor (convertir a array correctamente)
+  const rolesArray = Array.from(
+    guild.roles.cache.filter((r: any) => r.id !== guild.id && !r.managed).values(),
+  )
     .sort((a: any, b: any) => b.position - a.position)
-    .first(20);
+    .slice(0, 20);
 
   const rows = [];
 
@@ -270,7 +274,7 @@ async function showNotificationRolesStep(interaction: any, session: any) {
         .setLabel('⏭️ Omitir (no configurar)')
         .setValue('skip')
         .setDefault(!session.config.roles.laLiga),
-      ...roles.map((r: any) =>
+      ...rolesArray.map((r: any) =>
         new StringSelectMenuOptionBuilder()
           .setLabel(r.name)
           .setValue(r.id)
@@ -288,7 +292,7 @@ async function showNotificationRolesStep(interaction: any, session: any) {
         .setLabel('⏭️ Omitir (no configurar)')
         .setValue('skip')
         .setDefault(!session.config.roles.preParciales),
-      ...roles.map((r: any) =>
+      ...rolesArray.map((r: any) =>
         new StringSelectMenuOptionBuilder()
           .setLabel(r.name)
           .setValue(r.id)
@@ -306,7 +310,7 @@ async function showNotificationRolesStep(interaction: any, session: any) {
         .setLabel('⏭️ Omitir (no configurar)')
         .setValue('skip')
         .setDefault(!session.config.roles.cursos),
-      ...roles.map((r: any) =>
+      ...rolesArray.map((r: any) =>
         new StringSelectMenuOptionBuilder()
           .setLabel(r.name)
           .setValue(r.id)
@@ -324,7 +328,7 @@ async function showNotificationRolesStep(interaction: any, session: any) {
         .setLabel('⏭️ Omitir (no configurar)')
         .setValue('skip')
         .setDefault(!session.config.roles.notificacionesGenerales),
-      ...roles.map((r: any) =>
+      ...rolesArray.map((r: any) =>
         new StringSelectMenuOptionBuilder()
           .setLabel(r.name)
           .setValue(r.id)
@@ -362,11 +366,16 @@ async function showChannelsStep(interaction: any, session: any) {
   const embed = createChannelsEmbed(session);
   const guild = interaction.guild;
 
-  // Obtener canales de texto
-  const textChannels = guild.channels.cache
-    .filter((c: any) => c.type === ChannelType.GuildText)
+  // Obtener canales de texto y anuncios (convertir a array correctamente)
+  const textChannelsArray = Array.from(
+    guild.channels.cache
+      .filter(
+        (c: any) => c.type === ChannelType.GuildText || c.type === ChannelType.GuildAnnouncement,
+      )
+      .values(),
+  )
     .sort((a: any, b: any) => a.position - b.position)
-    .first(20);
+    .slice(0, 20);
 
   const rows = [];
 
@@ -375,7 +384,7 @@ async function showChannelsStep(interaction: any, session: any) {
     .setCustomId(`setup:channel_welcome:${session.userId}`)
     .setPlaceholder('👋 Selecciona canal de Bienvenida')
     .addOptions(
-      textChannels.map((c: any) =>
+      textChannelsArray.map((c: any) =>
         new StringSelectMenuOptionBuilder()
           .setLabel(`# ${c.name}`)
           .setValue(c.id)
@@ -389,7 +398,7 @@ async function showChannelsStep(interaction: any, session: any) {
     .setCustomId(`setup:channel_ticketTrigger:${session.userId}`)
     .setPlaceholder('🎫 Selecciona canal de Tickets')
     .addOptions(
-      textChannels.map((c: any) =>
+      textChannelsArray.map((c: any) =>
         new StringSelectMenuOptionBuilder()
           .setLabel(`# ${c.name}`)
           .setValue(c.id)
@@ -403,7 +412,7 @@ async function showChannelsStep(interaction: any, session: any) {
     .setCustomId(`setup:channel_announcements:${session.userId}`)
     .setPlaceholder('📢 Selecciona canal de Anuncios')
     .addOptions(
-      textChannels.map((c: any) =>
+      textChannelsArray.map((c: any) =>
         new StringSelectMenuOptionBuilder()
           .setLabel(`# ${c.name}`)
           .setValue(c.id)
@@ -439,26 +448,53 @@ async function showVoiceStep(interaction: any, session: any) {
   const embed = createVoiceEmbed(session);
   const guild = interaction.guild;
 
-  // Obtener canales de voz
-  const voiceChannels = guild.channels.cache
-    .filter((c: any) => c.type === ChannelType.GuildVoice)
+  // Obtener canales de voz (convertir a array correctamente)
+  const voiceChannelsArray = Array.from(
+    guild.channels.cache.filter((c: any) => c.type === ChannelType.GuildVoice).values(),
+  )
     .sort((a: any, b: any) => a.position - b.position)
-    .first(20);
+    .slice(0, 20);
 
-  // Obtener categorías
-  const categories = guild.channels.cache
-    .filter((c: any) => c.type === ChannelType.GuildCategory)
+  // Obtener categorías (convertir a array correctamente)
+  const categoriesArray = Array.from(
+    guild.channels.cache.filter((c: any) => c.type === ChannelType.GuildCategory).values(),
+  )
     .sort((a: any, b: any) => a.position - b.position)
-    .first(20);
+    .slice(0, 20);
 
   const rows = [];
+
+  // Validar que haya canales de voz
+  if (voiceChannelsArray.length === 0) {
+    await interaction.update({
+      embeds: [embed],
+      components: [
+        new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`setup:back_channels:${session.userId}`)
+            .setLabel('← Atrás: Canales')
+            .setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder()
+            .setCustomId(`setup:cancel:${session.userId}`)
+            .setLabel('Cancelar')
+            .setStyle(ButtonStyle.Danger),
+        ),
+      ],
+    });
+    await interaction.followUp({
+      content:
+        '❌ No se encontraron canales de voz en este servidor. Crea al menos un canal de voz antes de continuar.',
+      flags: 1 << 6,
+    });
+    return;
+  }
 
   // Canal VC Create
   const vcCreateMenu = new StringSelectMenuBuilder()
     .setCustomId(`setup:channel_vcCreate:${session.userId}`)
     .setPlaceholder('🎤 Selecciona canal VC Create')
     .addOptions(
-      voiceChannels.map((c: any) =>
+      voiceChannelsArray.map((c: any) =>
         new StringSelectMenuOptionBuilder()
           .setLabel(`🔊 ${c.name}`)
           .setValue(c.id)
@@ -468,27 +504,29 @@ async function showVoiceStep(interaction: any, session: any) {
   rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(vcCreateMenu));
 
   // Categoría Voz
-  const voiceCategoryMenu = new StringSelectMenuBuilder()
-    .setCustomId(`setup:channel_voiceCategory:${session.userId}`)
-    .setPlaceholder('📁 Selecciona categoría de Voz')
-    .addOptions(
-      categories.map((c: any) =>
-        new StringSelectMenuOptionBuilder()
-          .setLabel(`📁 ${c.name}`)
-          .setValue(c.id)
-          .setDefault(session.config.channels.voiceCategory === c.id),
-      ),
-    );
-  rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(voiceCategoryMenu));
+  if (categoriesArray.length > 0) {
+    const voiceCategoryMenu = new StringSelectMenuBuilder()
+      .setCustomId(`setup:channel_voiceCategory:${session.userId}`)
+      .setPlaceholder('📁 Selecciona categoría de Voz')
+      .addOptions(
+        categoriesArray.map((c: any) =>
+          new StringSelectMenuOptionBuilder()
+            .setLabel(`📁 ${c.name}`)
+            .setValue(c.id)
+            .setDefault(session.config.channels.voiceCategory === c.id),
+        ),
+      );
+    rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(voiceCategoryMenu));
+  }
 
   // VC Pool (múltiple selección)
   const vcPoolMenu = new StringSelectMenuBuilder()
     .setCustomId(`setup:vcPool:${session.userId}`)
     .setPlaceholder('🔄 Selecciona canales para VC Pool (mínimo 2)')
     .setMinValues(2)
-    .setMaxValues(Math.min(voiceChannels.size, 10))
+    .setMaxValues(Math.min(voiceChannelsArray.length, 10))
     .addOptions(
-      voiceChannels.map((c: any) =>
+      voiceChannelsArray.map((c: any) =>
         new StringSelectMenuOptionBuilder()
           .setLabel(`🔊 ${c.name}`)
           .setValue(c.id)
