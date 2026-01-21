@@ -7,6 +7,7 @@
 
 import { SlashCommandBuilder, ActivityType, PermissionsBitField } from 'discord.js';
 import { buildEmbed } from '../utils/embed';
+import { getGuildConfig } from '../config/store';
 
 /** Definición del comando /presence con subcomandos set y clear */
 const data = new SlashCommandBuilder()
@@ -54,9 +55,18 @@ const data = new SlashCommandBuilder()
  * @returns {Promise<void>}
  */
 async function execute(interaction: any) {
-  if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator)) {
-    return interaction.reply({ content: 'Solo admin/junta.', flags: 1 << 6 });
+  // Verificar si es admin o tiene rol de junta
+  const cfg = getGuildConfig(interaction.guildId);
+  const isAdmin = interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator);
+  const isJunta = cfg?.roles.junta ? interaction.member?.roles.cache.has(cfg.roles.junta) : false;
+
+  if (!isAdmin && !isJunta) {
+    return interaction.reply({
+      content: 'Solo admin/junta pueden usar este comando.',
+      flags: 1 << 6,
+    });
   }
+
   const sub = interaction.options.getSubcommand();
 
   const respond =

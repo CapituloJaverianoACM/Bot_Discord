@@ -172,7 +172,7 @@ async function showRolesStep(interaction: any, session: any) {
       .values(),
   )
     .sort((a: any, b: any) => b.position - a.position)
-    .slice(0, 20);
+    .slice(0, 25); // Discord permite máximo 25 opciones
 
   // Crear menús para cada rol
   const rows = [];
@@ -261,7 +261,7 @@ async function showNotificationRolesStep(interaction: any, session: any) {
     guild.roles.cache.filter((r: any) => r.id !== guild.id && !r.managed).values(),
   )
     .sort((a: any, b: any) => b.position - a.position)
-    .slice(0, 20);
+    .slice(0, 25); // Discord permite máximo 25 opciones
 
   const rows = [];
 
@@ -375,7 +375,7 @@ async function showChannelsStep(interaction: any, session: any) {
       .values(),
   )
     .sort((a: any, b: any) => a.position - b.position)
-    .slice(0, 20);
+    .slice(0, 25); // Discord permite máximo 25 opciones
 
   const rows = [];
 
@@ -421,6 +421,24 @@ async function showChannelsStep(interaction: any, session: any) {
     );
   rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(announcementsMenu));
 
+  // Canal Alertas (opcional)
+  const alertsMenu = new StringSelectMenuBuilder()
+    .setCustomId(`setup:channel_alerts:${session.userId}`)
+    .setPlaceholder('🔔 Selecciona canal de Alertas (opcional)')
+    .addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel('⏭️ Omitir (no configurar)')
+        .setValue('skip')
+        .setDefault(!session.config.channels.alerts),
+      ...textChannelsArray.map((c: any) =>
+        new StringSelectMenuOptionBuilder()
+          .setLabel(`# ${c.name}`)
+          .setValue(c.id)
+          .setDefault(session.config.channels.alerts === c.id),
+      ),
+    );
+  rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(alertsMenu));
+
   // Botones navegación
   const navRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -453,14 +471,14 @@ async function showVoiceStep(interaction: any, session: any) {
     guild.channels.cache.filter((c: any) => c.type === ChannelType.GuildVoice).values(),
   )
     .sort((a: any, b: any) => a.position - b.position)
-    .slice(0, 20);
+    .slice(0, 25); // Discord permite máximo 25 opciones
 
   // Obtener categorías (convertir a array correctamente)
   const categoriesArray = Array.from(
     guild.channels.cache.filter((c: any) => c.type === ChannelType.GuildCategory).values(),
   )
     .sort((a: any, b: any) => a.position - b.position)
-    .slice(0, 20);
+    .slice(0, 25); // Discord permite máximo 25 opciones
 
   const rows = [];
 
