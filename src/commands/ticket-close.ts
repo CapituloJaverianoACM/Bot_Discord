@@ -14,7 +14,7 @@ const EPHEMERAL_FLAG = 1 << 6;
 /** Definición del comando /ticketclose */
 const data = new SlashCommandBuilder()
   .setName('ticketclose')
-  .setDescription('Cierra el ticket actual (solo junta)');
+  .setDescription('🔒 Cierra el ticket actual');
 
 /**
  * Ejecuta el comando ticketclose para cerrar y eliminar un ticket

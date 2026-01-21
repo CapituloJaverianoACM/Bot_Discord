@@ -18,7 +18,7 @@ import { getGuildConfig } from '../config/store';
 /** Definición del comando /event con sus subcomandos */
 const data = new SlashCommandBuilder()
   .setName('event')
-  .setDescription('Gestiona eventos (scheduled events)')
+  .setDescription('📅 Prueba de concepto - Usa UI de Discord para eventos')
   .addSubcommand((sub) =>
     sub
       .setName('create')

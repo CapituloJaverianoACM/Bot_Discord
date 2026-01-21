@@ -14,7 +14,7 @@ const EPHEMERAL_FLAG = 1 << 6;
 /** Definición del comando /clear con sus opciones */
 const data = new SlashCommandBuilder()
   .setName('clear')
-  .setDescription('Limpia mensajes recientes')
+  .setDescription('🧹 Elimina mensajes por cantidad o tiempo')
   .addIntegerOption((opt) =>
     opt
       .setName('value')

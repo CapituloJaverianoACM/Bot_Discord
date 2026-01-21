@@ -17,11 +17,11 @@ function maskEmail(email: string) {
 
 const data = new SlashCommandBuilder()
   .setName('verify')
-  .setDescription('Verifica tu correo con un OTP')
+  .setDescription('🔐 Verifica tu correo con código OTP')
   .addSubcommand((sub) =>
     sub
       .setName('start')
-      .setDescription('Inicia verificación de correo')
+      .setDescription('🔐 Envía código OTP a tu correo')
       .addStringOption((opt) =>
         opt.setName('email').setDescription('Correo a verificar').setRequired(true),
       ),
@@ -29,7 +29,7 @@ const data = new SlashCommandBuilder()
   .addSubcommand((sub) =>
     sub
       .setName('code')
-      .setDescription('Confirma el OTP enviado a tu correo')
+      .setDescription('✅ Confirma código OTP recibido')
       .addStringOption((opt) => opt.setName('otp').setDescription('Código OTP').setRequired(true)),
   );
 
