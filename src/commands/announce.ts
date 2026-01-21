@@ -57,11 +57,11 @@ export function createAnnouncementPreview(session: any) {
     },
   ];
 
-  // Agregar campo de imagen si existe
+  // Agregar indicador de imagen si existe (la imagen se mostrará visualmente abajo)
   if (image) {
     fields.push({
       name: '🖼️ Imagen',
-      value: image,
+      value: '✅ Configurada (ver abajo)',
       inline: false,
     });
   }
@@ -71,6 +71,7 @@ export function createAnnouncementPreview(session: any) {
     description: 'Así es como se verá tu anuncio. Revisa antes de publicar.',
     color: color || '#5865F2', // Usar el color seleccionado
     fields,
+    image: image, // Mostrar la imagen visualmente en el embed
     footer: 'Haz clic en los botones para editar o publicar',
   });
 }
