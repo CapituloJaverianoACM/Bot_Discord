@@ -147,3 +147,23 @@ export function upsertGuildConfig(config: GuildConfig, requestId?: string) {
   logger.info('Guild config updated', { guildId: config.guildId, requestId });
   void saveToBucket();
 }
+
+/**
+ * Elimina la configuración de un servidor
+ * Persiste automáticamente los cambios en S3
+ * @param {string} guildId - ID del servidor
+ * @param {string} [requestId] - Request ID para logging
+ * @returns {boolean} True si se eliminó, false si no existía
+ */
+export function deleteGuildConfig(guildId: string, requestId?: string): boolean {
+  if (!cache.guilds[guildId]) {
+    logger.warn('Attempted to delete non-existent guild config', { guildId, requestId });
+    return false;
+  }
+
+  delete cache.guilds[guildId];
+  logger.info('Guild config deleted', { guildId, requestId });
+  void saveToBucket();
+  return true;
+}
+

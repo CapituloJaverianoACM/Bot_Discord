@@ -1,7 +1,8 @@
 /**
  * @file messageCreate.ts
  * @description Evento que se dispara cuando se crea un mensaje en cualquier canal.
- * Registra mensajes en la consola y proporciona un comando de fallback !ping.
+ * Proporciona un comando de fallback !ping para testing sin slash commands.
+ * Nota: Logging de mensajes deshabilitado para reducir ruido en logs.
  */
 
 /**
@@ -15,11 +16,7 @@ export default {
   once: false,
   async execute(message: any) {
     try {
-      const author = message.author ? `${message.author.tag} (${message.author.id})` : 'Unknown';
-      const channel = message.channel
-        ? `${message.channel.type ?? 'channel'}:${message.channel.id ?? 'unknown'}`
-        : 'Unknown';
-      console.log(`[message] ${author} in ${channel}: ${message.content ?? '[no content]'}`);
+      // Logging de mensajes deshabilitado - solo loggeamos interacciones de comandos
 
       // fallback: respond to text command prefix !ping so we can test command logic without slash registration
       if (typeof message.content === 'string' && message.content.trim().toLowerCase() === '!ping') {
@@ -30,7 +27,7 @@ export default {
         }
       }
     } catch (err) {
-      console.error('[message] could not log message', err);
+      console.error('[messageCreate] error in handler', err);
     }
   },
 };
