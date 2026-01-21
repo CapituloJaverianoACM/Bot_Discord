@@ -46,10 +46,12 @@ async function execute(interaction: any) {
       ownerId: guild.ownerId,
     });
 
-    return interaction.reply({
-      content: '❌ Solo el dueño del servidor puede eliminar la configuración.',
-      flags: 1 << 6,
-    });
+    const content = '❌ Solo el dueño del servidor puede eliminar la configuración.';
+    if (interaction.deferred) {
+      return interaction.editReply({ content });
+    } else {
+      return interaction.reply({ content, flags: 1 << 6 });
+    }
   }
 
   // Verificar confirmación
@@ -62,11 +64,13 @@ async function execute(interaction: any) {
       providedConfirmation: confirmacion,
     });
 
-    return interaction.reply({
-      content:
-        '❌ Confirmación inválida. Debes escribir exactamente `CONFIRMAR` para eliminar la configuración.',
-      flags: 1 << 6,
-    });
+    const content =
+      '❌ Confirmación inválida. Debes escribir exactamente `CONFIRMAR` para eliminar la configuración.';
+    if (interaction.deferred) {
+      return interaction.editReply({ content });
+    } else {
+      return interaction.reply({ content, flags: 1 << 6 });
+    }
   }
 
   // Verificar si existe configuración
@@ -78,10 +82,12 @@ async function execute(interaction: any) {
       guildId,
     });
 
-    return interaction.reply({
-      content: 'ℹ️ No hay configuración guardada para este servidor.',
-      flags: 1 << 6,
-    });
+    const content = 'ℹ️ No hay configuración guardada para este servidor.';
+    if (interaction.deferred) {
+      return interaction.editReply({ content });
+    } else {
+      return interaction.reply({ content, flags: 1 << 6 });
+    }
   }
 
   // Eliminar configuración
@@ -104,7 +110,7 @@ async function execute(interaction: any) {
         {
           name: 'Datos eliminados',
           value:
-            '• Roles (admin, junta, verify, eventPing)\n' +
+            '• Roles (admin, junta, verify, verifyJaveriana, eventPing)\n' +
             '• Canales (welcome, ticket, announcements, vc, alerts)\n' +
             '• Tickets abiertos\n' +
             '• Emails verificados\n' +
@@ -120,7 +126,11 @@ async function execute(interaction: any) {
       footer: `Request ID: ${requestId.slice(0, 8)}`,
     });
 
-    return interaction.reply({ embeds: [embed], flags: 1 << 6 });
+    if (interaction.deferred) {
+      return interaction.editReply({ embeds: [embed] });
+    } else {
+      return interaction.reply({ embeds: [embed], flags: 1 << 6 });
+    }
   } else {
     logger.error('Config-reset failed unexpectedly', {
       requestId,
@@ -128,10 +138,12 @@ async function execute(interaction: any) {
       guildId,
     });
 
-    return interaction.reply({
-      content: '❌ Error inesperado al eliminar la configuración. Intenta nuevamente.',
-      flags: 1 << 6,
-    });
+    const content = '❌ Error inesperado al eliminar la configuración. Intenta nuevamente.';
+    if (interaction.deferred) {
+      return interaction.editReply({ content });
+    } else {
+      return interaction.reply({ content, flags: 1 << 6 });
+    }
   }
 }
 

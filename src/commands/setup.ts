@@ -17,7 +17,13 @@ const data = new SlashCommandBuilder()
   .addStringOption((opt) => opt.setName('role_admin').setDescription('Rol admin').setRequired(true))
   .addStringOption((opt) => opt.setName('role_junta').setDescription('Rol junta').setRequired(true))
   .addStringOption((opt) =>
-    opt.setName('role_verify').setDescription('Rol verificado').setRequired(true),
+    opt.setName('role_verify').setDescription('Rol verificado (normal)').setRequired(true),
+  )
+  .addStringOption((opt) =>
+    opt
+      .setName('role_verify_javeriana')
+      .setDescription('Rol verificado Javeriana (@javeriana.edu.co)')
+      .setRequired(true),
   )
   // required channel options
   .addStringOption((opt) =>
@@ -78,6 +84,7 @@ async function execute(interaction: any) {
       admin: interaction.options.getString('role_admin', true),
       junta: interaction.options.getString('role_junta', true),
       verify: interaction.options.getString('role_verify', true),
+      verifyJaveriana: interaction.options.getString('role_verify_javeriana', true),
       eventPing: interaction.options.getString('role_event_ping') ?? undefined,
     },
     channels: {
@@ -101,7 +108,12 @@ async function execute(interaction: any) {
     fields: [
       { name: 'Admin', value: `<@&${config.roles.admin}>`, inline: true },
       { name: 'Junta', value: `<@&${config.roles.junta}>`, inline: true },
-      { name: 'Verificado', value: `<@&${config.roles.verify}>`, inline: true },
+      { name: 'Verificado (Normal)', value: `<@&${config.roles.verify}>`, inline: true },
+      {
+        name: 'Verificado (Javeriana)',
+        value: `<@&${config.roles.verifyJaveriana}>`,
+        inline: true,
+      },
       {
         name: 'Rol eventos',
         value: config.roles.eventPing ? `<@&${config.roles.eventPing}>` : 'N/A',

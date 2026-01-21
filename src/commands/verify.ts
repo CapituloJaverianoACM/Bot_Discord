@@ -52,10 +52,11 @@ async function execute(interaction: any) {
     guildId,
   });
 
-  if (!cfg?.roles.verify) {
-    logger.warn('Verify role not configured', { requestId, guildId });
+  if (!cfg?.roles.verify || !cfg?.roles.verifyJaveriana) {
+    logger.warn('Verify roles not configured', { requestId, guildId });
     return interaction.reply({
-      content: 'Rol de verificación no configurado. Usa /setup.',
+      content:
+        'Roles de verificación no configurados. Usa /setup para configurar ambos roles (normal y Javeriana).',
       flags: 1 << 6,
     });
   }
@@ -185,13 +186,34 @@ async function execute(interaction: any) {
         guildId,
         reason: result.reason,
       });
-      return interaction.reply({
-        content: `No se pudo verificar: ${result.reason}`,
-        flags: 1 << 6,
-      });
+
+      // Usar editReply porque el comando está deferido
+      if (interaction.deferred) {
+        return interaction.editReply({
+          content: `No se pudo verificar: ${result.reason}`,
+        });
+      } else {
+        return interaction.reply({
+          content: `No se pudo verificar: ${result.reason}`,
+          flags: 1 << 6,
+        });
+      }
     }
 
-    const roleId = cfg.roles.verify;
+    // Determinar qué rol asignar según el dominio del email
+    const email = result.email!.toLowerCase();
+    const isJaveriana = email.endsWith('@javeriana.edu.co');
+    const roleId = isJaveriana ? cfg.roles.verifyJaveriana : cfg.roles.verify;
+    const roleName = isJaveriana ? 'Javeriana' : 'Normal';
+
+    logger.info('Determining role based on email domain', {
+      requestId,
+      email: maskEmail(email),
+      isJaveriana,
+      roleType: roleName,
+      roleId,
+    });
+
     const role = interaction.guild.roles.cache.get(roleId);
     const botMember = interaction.guild.members.me;
 
@@ -199,12 +221,20 @@ async function execute(interaction: any) {
       logger.error('Verify role not found in guild', {
         requestId,
         roleId,
+        roleType: roleName,
         guildId,
       });
-      return interaction.reply({
-        content: 'El rol de verificado no existe en el servidor.',
-        flags: 1 << 6,
-      });
+
+      if (interaction.deferred) {
+        return interaction.editReply({
+          content: `El rol de verificado (${roleName}) no existe en el servidor.`,
+        });
+      } else {
+        return interaction.reply({
+          content: `El rol de verificado (${roleName}) no existe en el servidor.`,
+          flags: 1 << 6,
+        });
+      }
     }
 
     if (!botMember?.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
@@ -212,10 +242,17 @@ async function execute(interaction: any) {
         requestId,
         guildId,
       });
-      return interaction.reply({
-        content: 'No tengo permiso de Manage Roles para asignar el rol de verificado.',
-        flags: 1 << 6,
-      });
+
+      if (interaction.deferred) {
+        return interaction.editReply({
+          content: 'No tengo permiso de Manage Roles para asignar el rol de verificado.',
+        });
+      } else {
+        return interaction.reply({
+          content: 'No tengo permiso de Manage Roles para asignar el rol de verificado.',
+          flags: 1 << 6,
+        });
+      }
     }
 
     if (botMember.roles.highest.comparePositionTo(role) <= 0) {
@@ -224,10 +261,17 @@ async function execute(interaction: any) {
         roleId,
         guildId,
       });
-      return interaction.reply({
-        content: 'El rol de verificado está por encima o igual a mi rol. Súbeme en la jerarquía.',
-        flags: 1 << 6,
-      });
+
+      if (interaction.deferred) {
+        return interaction.editReply({
+          content: 'El rol de verificado está por encima o igual a mi rol. Súbeme en la jerarquía.',
+        });
+      } else {
+        return interaction.reply({
+          content: 'El rol de verificado está por encima o igual a mi rol. Súbeme en la jerarquía.',
+          flags: 1 << 6,
+        });
+      }
     }
 
     try {
@@ -247,10 +291,17 @@ async function execute(interaction: any) {
         error: err instanceof Error ? err.message : String(err),
         errorType: err instanceof Error ? err.name : 'RoleAssignError',
       });
-      return interaction.reply({
-        content: 'No pude asignar el rol de verificado. Revisa permisos/jerarquía.',
-        flags: 1 << 6,
-      });
+
+      if (interaction.deferred) {
+        return interaction.editReply({
+          content: 'No pude asignar el rol de verificado. Revisa permisos/jerarquía.',
+        });
+      } else {
+        return interaction.reply({
+          content: 'No pude asignar el rol de verificado. Revisa permisos/jerarquía.',
+          flags: 1 << 6,
+        });
+      }
     }
 
     // Persist email as verified for this user
@@ -263,13 +314,22 @@ async function execute(interaction: any) {
       userId: member.id,
       guildId,
       email: maskEmail(result.email!),
+      roleType: roleName,
+      roleId,
     });
 
     const embed = buildEmbed({
-      title: 'Verificado',
-      description: `Correo verificado: ${result.email}`,
+      title: '✅ Verificado',
+      description: `**Correo verificado:** ${result.email}\n**Tipo:** ${roleName}`,
+      color: isJaveriana ? '#D32F2F' : '#5865F2', // Rojo para Javeriana, azul para normal
     });
-    return interaction.reply({ embeds: [embed], flags: 1 << 6 });
+
+    // Usar editReply porque el comando está deferido
+    if (interaction.deferred) {
+      return interaction.editReply({ embeds: [embed] });
+    } else {
+      return interaction.reply({ embeds: [embed], flags: 1 << 6 });
+    }
   }
 }
 

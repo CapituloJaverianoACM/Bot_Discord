@@ -8,6 +8,7 @@ export interface GuildConfig {
     admin?: string;
     junta?: string;
     verify?: string;
+    verifyJaveriana?: string;
     eventPing?: string;
   };
   channels: {

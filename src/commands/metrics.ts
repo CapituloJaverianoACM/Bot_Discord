@@ -134,7 +134,12 @@ async function execute(interaction: any) {
     footer: `Generado el ${new Date().toLocaleString()}`,
   });
 
-  return interaction.reply({ embeds: [embed], flags: 1 << 6 });
+  // Usar editReply porque el comando tiene defer: true
+  if (interaction.deferred) {
+    return interaction.editReply({ embeds: [embed] });
+  } else {
+    return interaction.reply({ embeds: [embed], flags: 1 << 6 });
+  }
 }
 
 export default { data, execute, defer: true };
